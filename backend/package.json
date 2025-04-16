@@ -7,7 +7,6 @@
     "start:api": "ts-node src/api-server/index.ts",
     "start:match": "ts-node src/match-server/index.ts",
     "start:game": "ts-node src/game-server/index.ts",
-  
     "dev:api": "ts-node-dev --respawn src/api-server/index.ts",
     "dev:match": "ts-node-dev --respawn src/match-server/index.ts",
     "dev:game": "ts-node-dev --respawn src/game-server/index.ts"
@@ -17,9 +16,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/express": "^4.17.21",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "express": "^4.21.2",
     "ioredis": "^5.6.1",
     "pg": "^8.14.1",
     "redis": "^4.7.0",
@@ -27,7 +27,6 @@
     "typeorm": "^0.3.22"
   },
   "devDependencies": {
-    "@types/express": "^5.0.1",
     "@types/node": "^22.14.1",
     "@types/pg": "^8.11.13",
     "ts-node": "^10.9.2",
