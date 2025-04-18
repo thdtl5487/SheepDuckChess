@@ -3,6 +3,17 @@ import pool from '../../shared/config/pool';
 import redis from '../../shared/config/redis';
 import { v4 as uuidv4 } from 'uuid';
 
+// 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
+async function duplicateLoginCheck(usn:number): Promise<boolean>{
+    const ttl = await redis.ttl(`auth_token:${usn}`)
+    console.log(ttl);
+    if(ttl > 0){
+        console.log(`중복 로그인 실행, 토큰 재설정 usn : ${usn}`);
+        return true;
+    }
+    return false;
+}
+
 export const login = async (req: Request, res: Response) => {
     const { loginId, loginPw } = req.body;
 
@@ -31,6 +42,12 @@ export const login = async (req: Request, res: Response) => {
 
         // 토큰 생성 및 Redis 저장 (30분 유효)
         const token = uuidv4();
+        if(await duplicateLoginCheck(user.usn)){
+            console.log(`중복 로그인 확인. 기존 토큰 제거. usn : ${user.usn}`);
+            // TODO 기존 로그인 클라에 로그아웃 패킷 송신 기능 추가
+
+            await redis.del(`auth_token:${user.usn}`);
+        }
         await redis.set(`auth_token:${user.usn}`, token, {
             EX: 1800 // 30분 후 만료
         });
