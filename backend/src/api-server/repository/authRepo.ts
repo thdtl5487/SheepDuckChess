@@ -35,3 +35,10 @@ export const createUser = async(usn: number, nick: string) =>{
 
     return (result.rowCount ?? 0) > 0;
 }
+
+export const findUserByLoginIdAndLoginType = async(loginId: string, loginType: number) =>{
+    const result = await query(
+        `SELECT usn, login_pw FROM sdc_account_info WHERE login_id = $1 AND login_type = $2`, [loginId, loginType]
+    );
+    return result.rows[0];
+}

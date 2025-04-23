@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import pool from '../../shared/config/pool';
 import redis from '../../shared/config/redis';
 import { v4 as uuidv4 } from 'uuid';
+import * as authService from '../services/authService';
+
 
 // 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
 async function duplicateLoginCheck(usn:number): Promise<boolean>{
@@ -30,11 +32,23 @@ export const signUp = async (req: Request, res: Response) =>{
         }
     }
 
+    try{
+        const result = await authService.signUpService({loginType, loginId, loginPw, nick});
+
+        if(result == 0){
+            return res.status(200).json({message: '성공!'});
+        }
+    }catch(err: any){
+        console.error('[회원가입 실패]', err);
+        return res.status(err.status || 500).json({msg: err.message || '서버 오류 발생'});
+    }
+    
+
 }
 
 
 export const login = async (req: Request, res: Response) => {
-    const { loginId, loginPw } = req.body;
+    const { loginType, loginId, loginPw } = req.body;
 
     if (!loginId || !loginPw) {
         return res.status(400).json({ message: '아이디와 비밀번호는 필수입니다.' });
@@ -42,6 +56,9 @@ export const login = async (req: Request, res: Response) => {
 
     try {
         // 유저 조회
+
+        const testResult = await authService.loginService({loginType, loginId, loginPw});
+
         // SQL 인젝션 방지를 위한 방식
         const result = await pool.query(
             'SELECT usn, login_pw FROM sdc_account_info WHERE login_id = $1',
@@ -53,11 +70,6 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const user = result.rows[0];
-
-        // 비밀번호 비교 (암호화된 문자열 그대로 비교)
-        if (user.login_pw !== loginPw) {
-            return res.status(401).json({ message: '아이디 또는 비밀번호 불일치' });
-        }
 
         // 토큰 생성 및 Redis 저장 (30분 유효)
         const token = uuidv4();
@@ -77,8 +89,8 @@ export const login = async (req: Request, res: Response) => {
             usn: user.usn
         });
 
-    } catch (err) {
+    } catch (err : any) {
         console.error('로그인 오류:', err);
-        return res.status(500).json({ message: '서버 오류' });
+        return res.status(err.status || 500).json({ message: err.message || '서버 오류' });
     }
 };
