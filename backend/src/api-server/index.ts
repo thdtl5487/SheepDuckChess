@@ -4,6 +4,8 @@ import path from 'path';
 import authRoutes from './routes/authRoutes';
 import authMiddleware from '../middlewares/auth';
 import authTestRouter from './routes/authTestRoutes';
+import cors from 'cors';
+
 
 // import testRouter from './routes/testRoutes';
 
@@ -11,7 +13,15 @@ dotenv.config({
     path: path.resolve(__dirname, '../shared/config/.env')
 });
 
+const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+
 const app = express();
+
+app.use(cors({
+    origin: allowedOrigin,
+    credentials: true
+}))
+
 const port = process.env.PORT_API || 4444;
 
 app.use(express.json());

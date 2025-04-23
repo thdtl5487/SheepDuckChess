@@ -37,5 +37,18 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
         throw{ status:401, message : '비밀번호가 올바르지 않음' };
     }
 
+    // 로그인 성공 ---
+
+    // login date 갱신
+    const loginLog = await authRepo.findLoginDates(result.usn);
+
+    if(loginLog.first_login_date == null){
+        const modifyLastLogin = await authRepo.modifyLoginDates(result.usn, true);
+        if(!modifyLastLogin){
+            
+            throw{ status:401, message : '로그인 갱신 실패' }
+        }
+    }
+
     return result.usn;
 }

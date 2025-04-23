@@ -46,7 +46,7 @@ export const signUp = async (req: Request, res: Response) =>{
 
 }
 
-
+// TODO JWT 기능 추가
 export const login = async (req: Request, res: Response) => {
     const { loginType, loginId, loginPw } = req.body;
 

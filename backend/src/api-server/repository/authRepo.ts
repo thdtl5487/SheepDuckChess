@@ -42,3 +42,21 @@ export const findUserByLoginIdAndLoginType = async(loginId: string, loginType: n
     );
     return result.rows[0];
 }
+
+export const findLoginDates = async(usn:number)=>{
+    const result = await query(
+        `SELECT usn, first_login_date, last_login_date FROM sdc_account_info WHERE usn = $1`, [usn]
+    );
+    return result.rows[0];
+}
+
+export const modifyLoginDates = async(usn:number, isFirst:boolean)=>{
+    const now = new Date().toISOString();
+    let result;
+    if(isFirst){
+        result = await query(`UPDATE sdc_account_info SET first_login_date = $2, last_login_date = $2 WHERE usn = $1`, [usn, now])
+    }else{
+        result = await query(`UPDATE sdc_account_info SET last_login_date = $2 WHERE usn = $1`, [usn, now])
+    }
+    return (result.rowCount ?? 0)> 0;
+}
