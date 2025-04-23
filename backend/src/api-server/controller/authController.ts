@@ -14,6 +14,25 @@ async function duplicateLoginCheck(usn:number): Promise<boolean>{
     return false;
 }
 
+export const signUp = async (req: Request, res: Response) =>{
+    const { loginType, loginId, loginPw, nick } = req.body;
+
+    // 필요 파라미터 기재 여부 확인
+    const requiredFields: Record<string, string> = {
+        loginId: 'ID를 입력해주세요',
+        loginPw: '비밀번호를 입력해주세요',
+        nick: '닉네임을 입력해주세요',
+    };
+
+    for (const [key, msg] of Object.entries(requiredFields)) {
+        if (!req.body[key]) {
+            return res.status(400).json({ msg });
+        }
+    }
+
+}
+
+
 export const login = async (req: Request, res: Response) => {
     const { loginId, loginPw } = req.body;
 
