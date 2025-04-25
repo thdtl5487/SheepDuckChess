@@ -3,6 +3,8 @@ import pool from '../../shared/config/pool';
 import redis from '../../shared/config/redis';
 import { v4 as uuidv4 } from 'uuid';
 import * as authService from '../services/authService';
+import { signToken, verifyToken } from '../../shared/utils/jwt';
+import { verify } from 'crypto';
 
 
 // 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
@@ -55,38 +57,42 @@ export const login = async (req: Request, res: Response) => {
     }
 
     try {
-        // 유저 조회
+        const result = await authService.loginService({loginType, loginId, loginPw});
 
-        const testResult = await authService.loginService({loginType, loginId, loginPw});
+        const user = result;
 
-        // SQL 인젝션 방지를 위한 방식
-        const result = await pool.query(
-            'SELECT usn, login_pw FROM sdc_account_info WHERE login_id = $1',
-            [loginId]
-        );
+        // Redis 토큰 생성 로직
+        // const token = uuidv4();
+        // if(await duplicateLoginCheck(user.usn)){
+        //     console.log(`중복 로그인 확인. 기존 토큰 제거. usn : ${user.usn}`);
+        //     // TODO 기존 로그인 클라에 로그아웃 패킷 송신 기능 추가
 
-        if (result.rowCount === 0) {
-            return res.status(401).json({ message: '아이디 또는 비밀번호 불일치' });
-        }
+        //     await redis.del(`auth_token:${user.usn}`);
+        // }
+        // await redis.set(`auth_token:${user.usn}`, token, {
+        //     EX: 1800 // 30분 후 만료
+        // });
 
-        const user = result.rows[0];
+        // JWT 토큰 발급 및
+        const token = signToken({usn: user.usn, nick: user.nick})
 
-        // 토큰 생성 및 Redis 저장 (30분 유효)
-        const token = uuidv4();
-        if(await duplicateLoginCheck(user.usn)){
-            console.log(`중복 로그인 확인. 기존 토큰 제거. usn : ${user.usn}`);
-            // TODO 기존 로그인 클라에 로그아웃 패킷 송신 기능 추가
-
-            await redis.del(`auth_token:${user.usn}`);
-        }
-        await redis.set(`auth_token:${user.usn}`, token, {
-            EX: 1800 // 30분 후 만료
-        });
-
-        return res.status(200).json({
-            message: '로그인 성공',
-            token,
-            usn: user.usn
+        return res
+            .cookie('token', token, {
+                httpOnly:true,
+                sameSite: 'lax',
+                secure: false,
+                maxAge: 1000*60*60*24, // 1일
+            })
+            .status(200).json({
+                message: '로그인 성공',
+                token,
+                usn: user.usn,
+                nick: user.nick,
+                rating: user.rating,
+                money: user.money,
+                free_cash: user.free_cash,
+                real_cash: user.real_cash
+                
         });
 
     } catch (err : any) {
@@ -94,3 +100,37 @@ export const login = async (req: Request, res: Response) => {
         return res.status(err.status || 500).json({ message: err.message || '서버 오류' });
     }
 };
+
+export const getUserInfo = async (req: Request, res: Response) => {
+    const usn = (req as any).user.usn;
+
+    // 토큰 체크 중복으로 생략 가능
+    // const token = verifyToken(req.cookies?.token)
+    // if(usn != token.usn){
+    //     return res.status(401).json({message: '토큰 비정상'})
+    // }
+
+    try{
+        const result = await authService.getUserInfo(usn);
+
+        return res
+            // 토큰 체크 중복으로 생략
+            // .cookie('token', token, {
+            //     httpOnly:true,
+            //     sameSite: 'lax',
+            //     secure: false,
+            //     maxAge: 1000*60*60*24, // 1일
+            // }).
+            .status(200).json({
+                message: '로그인 성공',
+                usn: result.usn,
+                nick: result.nick,
+                rating: result.rating,
+                money: result.money,
+                free_cash: result.free_cash,
+                real_cash: result.real_cash
+        });
+    }catch(err : any){
+        return res.status(401).json({message: err.message || '서버 오류'});
+    }
+}

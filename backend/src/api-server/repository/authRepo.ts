@@ -60,3 +60,10 @@ export const modifyLoginDates = async(usn:number, isFirst:boolean)=>{
     }
     return (result.rowCount ?? 0)> 0;
 }
+
+export const findUserByUsn = async(usn:number)=>{
+    let result = await query(
+        `SELECT usn, nick, grade, rating, money, free_cash, real_cash FROM sdc_user WHERE usn = $1`, [usn]
+    )
+    return result.rows[0];
+}

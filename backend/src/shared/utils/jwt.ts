@@ -1,7 +1,7 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import type { StringValue } from 'ms'; 
 
-const secret = process.env.JWT_SECRET || 'my-secret-token-key';
+const secret = process.env.JWT_SECRET || 'my-s';
 
 export const signToken = (payload: object, expiresIn: StringValue = '1d') => {
     const options: SignOptions = { expiresIn };

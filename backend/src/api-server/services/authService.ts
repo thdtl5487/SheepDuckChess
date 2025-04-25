@@ -1,5 +1,5 @@
 import * as authRepo from '../repository/authRepo';
-import { SignupDTO, LoginDTO } from '../dto/auth.dto';
+import { SignupDTO, LoginDTO, UserDTO } from '../dto/auth.dto';
 import bcrypt from 'bcrypt';
 
 const bcryptSaltRounds = 10;
@@ -21,7 +21,7 @@ export const signUpService = async ({ loginType, loginId, loginPw, nick }: Signu
     return 0;
 }
 
-export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : Promise<number> =>{
+export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : Promise<UserDTO> =>{
 
     const result = await authRepo.findUserByLoginIdAndLoginType(loginId, loginType);
     
@@ -50,5 +50,14 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
         }
     }
 
-    return result.usn;
+    const userInfo = await authRepo.findUserByUsn(result.usn);
+
+    return userInfo;
+}
+
+export const getUserInfo = async (usn: number) : Promise<UserDTO> =>{
+
+    const result = await authRepo.findUserByUsn(usn);
+
+    return result;
 }
