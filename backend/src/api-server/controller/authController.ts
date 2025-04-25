@@ -10,7 +10,6 @@ import { verify } from 'crypto';
 // 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
 async function duplicateLoginCheck(usn:number): Promise<boolean>{
     const ttl = await redis.ttl(`auth_token:${usn}`)
-    console.log(ttl);
     if(ttl > 0){
         console.log(`중복 로그인 실행, 토큰 재설정 usn : ${usn}`);
         return true;
@@ -44,8 +43,6 @@ export const signUp = async (req: Request, res: Response) =>{
         console.error('[회원가입 실패]', err);
         return res.status(err.status || 500).json({msg: err.message || '서버 오류 발생'});
     }
-    
-
 }
 
 // TODO JWT 기능 추가
@@ -124,7 +121,7 @@ export const getUserInfo = async (req: Request, res: Response) => {
             .status(200).json({
                 message: '로그인 성공',
                 usn: result.usn,
-                nick: result.nick,
+                ncjsrnrick: result.nick,
                 rating: result.rating,
                 money: result.money,
                 free_cash: result.free_cash,

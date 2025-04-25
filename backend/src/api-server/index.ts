@@ -7,9 +7,7 @@ import cors from 'cors';
 import cookieParser = require('cookie-parser');
 import { getUserInfo } from './controller/authController';
 
-dotenv.config({
-    path: path.resolve(__dirname, '../shared/config/.env')
-});
+dotenv.config();
 
 console.log("PGUSER", process.env.PGUSER);
 

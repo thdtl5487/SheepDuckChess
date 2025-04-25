@@ -1,10 +1,7 @@
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({
-    path: path.resolve(__dirname, '.env')
-});
+dotenv.config();
 
 console.log(`포트 위치 : ${process.env.REDIS_PORT}`)
 

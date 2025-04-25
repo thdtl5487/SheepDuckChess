@@ -6,7 +6,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 
   const token = req.cookies?.token;
 
-  console.log(token);
+  // console.log(token);
 
   if(!token) return res.status(401).json({message: '로그인이 필요한 기능입니다.'});
 

@@ -1,18 +1,20 @@
 import * as authRepo from '../repository/authRepo';
 import { SignupDTO, LoginDTO, UserDTO } from '../dto/auth.dto';
 import bcrypt from 'bcrypt';
+import { ApiError } from '../../shared/utils/apiError';
+import redis from '../../shared/config/redis';
 
 const bcryptSaltRounds = 10;
 
 export const signUpService = async ({ loginType, loginId, loginPw, nick }: SignupDTO) : Promise<number>=>{
     const idExist = await authRepo.isLoginIdExist(loginId);
     if(idExist){
-        throw{ status:400, message : '이미 존재하는 ID입니다 '};
+        throw new ApiError(401, '이미 존재하는 ID입니다.');
     }
 
     const nickExist = await authRepo.isNicknameExist(nick);
     if(nickExist){
-        throw{ status:400, message: '이미 존재하는 닉네임입니다' };
+        throw new ApiError(401, '이미 존재하는 닉네임입니다.');
     }    
 
     const hashedPw = await bcrypt.hash(loginPw, bcryptSaltRounds);
@@ -26,7 +28,7 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
     const result = await authRepo.findUserByLoginIdAndLoginType(loginId, loginType);
     
     if(result == undefined){
-        throw{ status:400, message : '존재하지 않는 아이디입니다' };
+        throw new ApiError(401, 'ID 또는 PW가 일치하지 않습니다.');
     }
 
     // const hashedPw = await bcrypt.hash(loginPw, bcryptSaltRounds);
@@ -34,7 +36,7 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
 
     if(!isValidPw){
         // TODO 텍스트 변경
-        throw{ status:401, message : '비밀번호가 올바르지 않음' };
+        throw new ApiError(401, 'ID 또는 PW가 일치하지 않습니다..');
     }
 
     // 로그인 성공 ---
@@ -46,7 +48,7 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
         const modifyLastLogin = await authRepo.modifyLoginDates(result.usn, true);
         if(!modifyLastLogin){
             
-            throw{ status:401, message : '로그인 갱신 실패' }
+            throw new ApiError(500, '로그인 갱신에 실패했습니다.');
         }
     }
 
@@ -57,7 +59,13 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
 
 export const getUserInfo = async (usn: number) : Promise<UserDTO> =>{
 
-    const result = await authRepo.findUserByUsn(usn);
+    const cached = await redis.get(`user:${usn}`)
+    if(cached) return JSON.parse(cached);
 
-    return result;
+    const user = await authRepo.findUserByUsn(usn);
+    await redis.set(`user:${usn}`, JSON.stringify(user), {
+        EX: 60, // ⏱ 60초 동안 캐시
+    });
+    
+    return user;
 }
