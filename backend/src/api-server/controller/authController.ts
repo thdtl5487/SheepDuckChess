@@ -3,9 +3,9 @@ import pool from '../../shared/config/pool';
 import redis from '../../shared/config/redis';
 import { v4 as uuidv4 } from 'uuid';
 import * as authService from '../services/authService';
-import { signToken, verifyToken } from '../../shared/utils/jwt';
+import { signToken, verifyRefreshToken, verifyToken } from '../../shared/utils/jwt';
 import { verify } from 'crypto';
-
+import { setCookie } from '../../shared/utils/cookie';
 
 // 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
 async function duplicateLoginCheck(usn:number): Promise<boolean>{
@@ -54,32 +54,18 @@ export const login = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await authService.loginService({loginType, loginId, loginPw});
+        const result = (await authService.loginService({loginType, loginId, loginPw}));
+        const {accessToken, refreshToken} = result.tokens;
+        const user = result.userInfo;
 
-        const user = result;
-
-        // Redis 토큰 생성 로직
-        // const token = uuidv4();
-        // if(await duplicateLoginCheck(user.usn)){
-        //     console.log(`중복 로그인 확인. 기존 토큰 제거. usn : ${user.usn}`);
         //     // TODO 기존 로그인 클라에 로그아웃 패킷 송신 기능 추가
 
-        //     await redis.del(`auth_token:${user.usn}`);
-        // }
-        // await redis.set(`auth_token:${user.usn}`, token, {
-        //     EX: 1800 // 30분 후 만료
-        // });
-
-        // JWT 토큰 발급 및
-        const token = signToken({usn: user.usn, nick: user.nick})
+        const token = signToken(user.usn);
+        
+        setCookie(res, 'token', token, 1000*60*15);
+        setCookie(res, 'refreshToken', refreshToken, 1000*60*60*24*7);
 
         return res
-            .cookie('token', token, {
-                httpOnly:true,
-                sameSite: 'lax',
-                secure: false,
-                maxAge: 1000*60*60*24, // 1일
-            })
             .status(200).json({
                 message: '로그인 성공',
                 token,
@@ -101,23 +87,10 @@ export const login = async (req: Request, res: Response) => {
 export const getUserInfo = async (req: Request, res: Response) => {
     const usn = (req as any).user.usn;
 
-    // 토큰 체크 중복으로 생략 가능
-    // const token = verifyToken(req.cookies?.token)
-    // if(usn != token.usn){
-    //     return res.status(401).json({message: '토큰 비정상'})
-    // }
-
     try{
         const result = await authService.getUserInfo(usn);
 
         return res
-            // 토큰 체크 중복으로 생략
-            // .cookie('token', token, {
-            //     httpOnly:true,
-            //     sameSite: 'lax',
-            //     secure: false,
-            //     maxAge: 1000*60*60*24, // 1일
-            // }).
             .status(200).json({
                 message: '로그인 성공',
                 usn: result.usn,
@@ -129,5 +102,28 @@ export const getUserInfo = async (req: Request, res: Response) => {
         });
     }catch(err : any){
         return res.status(401).json({message: err.message || '서버 오류'});
+    }
+}
+
+export const refreshAccessToken = async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.refreshToken;
+    if(!refreshToken) return res.status(401).json({message: '리프레시 토큰 만료되거나 없음'});
+
+    try{
+        const payload = verifyRefreshToken(refreshToken);
+        const usn = payload.usn;
+
+        const saved = await redis.get(`refresh:${usn}`);
+        if(!saved || saved !== refreshToken){
+            return res.status(401).json({message:'토큰 변조 가능성 감지'})
+        }
+
+        const newAccessToken = signToken(usn);
+        setCookie(res, 'token', newAccessToken, 1000*60*15);
+
+        return res.status(200).json({message: '토큰 갱신 완료'});
+
+    }catch(err){
+        return res.status(401).json({message: '리프레시 토큰 유효하지 않음'})
     }
 }

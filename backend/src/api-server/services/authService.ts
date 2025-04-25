@@ -3,6 +3,7 @@ import { SignupDTO, LoginDTO, UserDTO } from '../dto/auth.dto';
 import bcrypt from 'bcrypt';
 import { ApiError } from '../../shared/utils/apiError';
 import redis from '../../shared/config/redis';
+import { signRefreshToken, signToken } from '../../shared/utils/jwt';
 
 const bcryptSaltRounds = 10;
 
@@ -23,7 +24,7 @@ export const signUpService = async ({ loginType, loginId, loginPw, nick }: Signu
     return 0;
 }
 
-export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : Promise<UserDTO> =>{
+export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) =>{
 
     const result = await authRepo.findUserByLoginIdAndLoginType(loginId, loginType);
     
@@ -52,9 +53,19 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) : 
         }
     }
 
+    const accessToken = signToken( result.usn );
+    const refreshToken = signRefreshToken( result.usn );
+
+    await redis.set(`refresh:${result.usn}`, refreshToken, {EX: 60* 60* 24 * 7});
+
     const userInfo = await authRepo.findUserByUsn(result.usn);
 
-    return userInfo;
+    return {userInfo,
+            tokens:{
+                accessToken,
+                refreshToken
+            }
+    };
 }
 
 export const getUserInfo = async (usn: number) : Promise<UserDTO> =>{
