@@ -1,11 +1,18 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useSetRecoilState } from "recoil";
+import { userState } from "../store/userState";
+import { userInfo } from "os";
+import { User } from "../types/user";
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const [loginId, setLoginId] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  
 
   const handleLogin = async () => {
     try {
@@ -15,8 +22,20 @@ export default function LoginPage() {
         loginPw,
       });
 
+      console.log(response);
       alert("로그인 성공!");
+
+      setUser({
+        usn: response.data.usn,
+        nick: response.data.nick,
+        rating: response.data.rating,
+        money: response.data.money,
+        free_cash: response.data.free_cash,
+        real_cash: response.data.real_cash
+      });
+
       navigate("/main"); // 나중에 메인 페이지로 이동
+      
     } catch (err: any) {
       alert(err.response?.data?.msg || "로그인 실패");
     }
