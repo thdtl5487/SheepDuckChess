@@ -1,5 +1,5 @@
 import * as authRepo from '../repository/authRepo';
-import { SignupDTO, LoginDTO, UserDTO } from '../dto/auth.dto';
+import { SignupDTO, LoginDTO, UserDTO, UserSkinInfoDTO } from '../dto/auth.dto';
 import bcrypt from 'bcrypt';
 import { ApiError } from '../../shared/utils/apiError';
 import redis from '../../shared/config/redis';
@@ -7,7 +7,7 @@ import { signRefreshToken, signToken } from '../../shared/utils/jwt';
 
 const bcryptSaltRounds = 10;
 
-export const signUpService = async ({ loginType, loginId, loginPw, nick }: SignupDTO) : Promise<number>=>{
+export const signUpService = async ({ loginType, loginId, loginPw, nick, firstTeam }: SignupDTO) : Promise<number>=>{
     const idExist = await authRepo.isLoginIdExist(loginId);
     if(idExist){
         throw new ApiError(401, '이미 존재하는 ID입니다.');
@@ -21,6 +21,14 @@ export const signUpService = async ({ loginType, loginId, loginPw, nick }: Signu
     const hashedPw = await bcrypt.hash(loginPw, bcryptSaltRounds);
     const usn = await authRepo.createAccount(loginType, loginId, hashedPw);
     await authRepo.createUser(usn, nick);
+
+    if(!usn){
+        throw new ApiError(500, '계정 생성 중 오류 발생');
+    }
+
+    authRepo.insertDefaultSkinsForUser(usn);
+    authRepo.insertUserSkinSettingInfo(usn, firstTeam);
+
     return 0;
 }
 
@@ -68,7 +76,7 @@ export const loginService = async ({ loginType, loginId, loginPw }: LoginDTO) =>
     };
 }
 
-export const getUserInfo = async (usn: number) : Promise<UserDTO> =>{
+export const getUserInfoService = async (usn: number) : Promise<UserDTO> =>{
 
     const cached = await redis.get(`user:${usn}`)
     if(cached) return JSON.parse(cached);
@@ -79,4 +87,23 @@ export const getUserInfo = async (usn: number) : Promise<UserDTO> =>{
     });
     
     return user;
+}
+
+export const getUserSkinSettingInfo = async (usn: number) : Promise<UserSkinInfoDTO> =>{
+
+    const result = await authRepo.findUserSkinInfoByUsn(usn);
+    if(result == undefined){
+        throw new ApiError(500, '유저 스킨 정보를 찾을 수 없습니다.');
+    }
+
+    return result;
+}
+
+// 유저 최초 가입 시 생성되는 기본 세팅값
+// firstTeam (오리, 양 중 최초선택)
+export const createDefaultUserSkinInfo = async (usn: number, firstTeam: boolean) =>{
+
+    const result = await authRepo.insertUserSkinSettingInfo(usn, false);
+
+    return result;
 }

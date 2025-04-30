@@ -5,7 +5,7 @@ import authRoutes from './routes/authRoutes';
 import { requireAuth } from '../middlewares/auth';
 import cors from 'cors';
 import cookieParser = require('cookie-parser');
-import { getUserInfo } from './controller/authController';
+import { getUserInfo, getUserInfoByRFToken } from './controller/authController';
 
 dotenv.config();
 
@@ -17,7 +17,8 @@ const app = express();
 
 app.use(cors({
     origin: allowedOrigin,
-    credentials: true
+    credentials: true,
+    exposedHeaders: ['set-cookie']
 }))
 
 const port = process.env.PORT_API || 4444;
@@ -31,6 +32,8 @@ app.get('/', (req, res)=>{ // 화면에 전송되는 데이타
 })
 
 app.get('/api/me', requireAuth, getUserInfo);
+app.post('/api/getUserInfoByRFToken', requireAuth, getUserInfoByRFToken);
+
 
 app.listen(port, ()=>{
     console.log(`서버 실행 포트 : ${port}`);

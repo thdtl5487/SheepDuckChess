@@ -3,6 +3,7 @@ export interface SignupDTO {
     loginId: string;
     loginPw: string;
     nick: string;
+    firstTeam: boolean;
 }
 
 export interface LoginDTO{
@@ -18,4 +19,16 @@ export interface UserDTO{
     money: number;
     free_cash: number;
     real_cash: number;
+}
+
+export interface UserSkinInfoDTO{
+    usn: number;
+    piece_skin_pawn: number;
+    piece_skin_knight: number;
+    piece_skin_bishop: number;
+    piece_skin_rook: number;
+    piece_skin_queen: number;
+    piece_skin_king: number;
+    board_skin: number;
+    character_id: number;
 }

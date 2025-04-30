@@ -1,6 +1,7 @@
 import { Response } from 'express';
 
-const isProd = process.env.NODE_ENV === 'production' || process.env.IS_PRODUCT_ENV === 'production';
+const isProd = process.env.NODE_ENV === 'production'
+// console.log("isProd : " , isProd)
 
 export const setCookie = (
     res: Response,

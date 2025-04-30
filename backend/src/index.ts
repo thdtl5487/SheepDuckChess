@@ -1,5 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import cors from 'cors';
 // import authMiddleware from './middlewares/auth';
 // import testRouter from './api-server/routes/testRoutes';
 

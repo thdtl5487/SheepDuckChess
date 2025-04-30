@@ -8,17 +8,17 @@ import { verify } from 'crypto';
 import { setCookie } from '../../shared/utils/cookie';
 
 // 중복 로그인 확인용, 중복 로그인 확인 시 true 반환
-async function duplicateLoginCheck(usn:number): Promise<boolean>{
+async function duplicateLoginCheck(usn: number): Promise<boolean> {
     const ttl = await redis.ttl(`auth_token:${usn}`)
-    if(ttl > 0){
+    if (ttl > 0) {
         console.log(`중복 로그인 실행, 토큰 재설정 usn : ${usn}`);
         return true;
     }
     return false;
 }
 
-export const signUp = async (req: Request, res: Response) =>{
-    const { loginType, loginId, loginPw, nick } = req.body;
+export const signUp = async (req: Request, res: Response) => {
+    const { loginType, loginId, loginPw, nick, firstTeam } = req.body;
 
     // 필요 파라미터 기재 여부 확인
     const requiredFields: Record<string, string> = {
@@ -33,19 +33,18 @@ export const signUp = async (req: Request, res: Response) =>{
         }
     }
 
-    try{
-        const result = await authService.signUpService({loginType, loginId, loginPw, nick});
+    try {
+        const result = await authService.signUpService({ loginType, loginId, loginPw, nick, firstTeam });
 
-        if(result == 0){
-            return res.status(200).json({message: '성공!'});
+        if (result == 0) {
+            return res.status(200).json({ message: '성공!' });
         }
-    }catch(err: any){
+    } catch (err: any) {
         console.error('[회원가입 실패]', err);
-        return res.status(err.status || 500).json({msg: err.message || '서버 오류 발생'});
+        return res.status(err.status || 500).json({ msg: err.message || '서버 오류 발생' });
     }
 }
 
-// TODO JWT 기능 추가
 export const login = async (req: Request, res: Response) => {
     const { loginType, loginId, loginPw } = req.body;
 
@@ -54,16 +53,15 @@ export const login = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = (await authService.loginService({loginType, loginId, loginPw}));
-        const {accessToken, refreshToken} = result.tokens;
-        const user = result.userInfo;
-
-        //     // TODO 기존 로그인 클라에 로그아웃 패킷 송신 기능 추가
-
-        const token = signToken(user.usn);
+        const result = (await authService.loginService({ loginType, loginId, loginPw }));
         
-        setCookie(res, 'token', token, 1000*60*15);
-        setCookie(res, 'refreshToken', refreshToken, 1000*60*60*24*7);
+        const { accessToken, refreshToken } = result.tokens;
+        const user = result.userInfo;
+        const userSkinInfo = await authService.getUserSkinSettingInfo(user.usn);
+        const token = signToken(user.usn);
+
+        setCookie(res, 'token', token, 1000 * 60 * 15);
+        setCookie(res, 'refreshToken', refreshToken, 1000 * 60 * 60 * 24 * 7);
 
         return res
             .status(200).json({
@@ -74,56 +72,88 @@ export const login = async (req: Request, res: Response) => {
                 rating: user.rating,
                 money: user.money,
                 free_cash: user.free_cash,
-                real_cash: user.real_cash
-                
-        });
+                real_cash: user.real_cash,
+                "pieceSkin": {
+                    "pawn": userSkinInfo.piece_skin_pawn,
+                    "knight": userSkinInfo.piece_skin_knight,
+                    "bishop": userSkinInfo.piece_skin_bishop,
+                    "rook": userSkinInfo.piece_skin_rook,
+                    "queen": userSkinInfo.piece_skin_queen,
+                    "king": userSkinInfo.piece_skin_king,
+                },
+                "boardSkin": userSkinInfo.board_skin,
+                "character": userSkinInfo.character_id
+            });
 
-    } catch (err : any) {
+    } catch (err: any) {
         console.error('로그인 오류:', err);
         return res.status(err.status || 500).json({ message: err.message || '서버 오류' });
     }
 };
 
+// /api/me
 export const getUserInfo = async (req: Request, res: Response) => {
     const usn = (req as any).user.usn;
 
-    try{
-        const result = await authService.getUserInfo(usn);
+    try {
+        const result = await authService.getUserInfoService(usn);
 
         return res
             .status(200).json({
                 message: '로그인 성공',
                 usn: result.usn,
-                ncjsrnrick: result.nick,
+                nick: result.nick,
                 rating: result.rating,
                 money: result.money,
                 free_cash: result.free_cash,
                 real_cash: result.real_cash
-        });
-    }catch(err : any){
-        return res.status(401).json({message: err.message || '서버 오류'});
+            });
+    } catch (err: any) {
+        return res.status(401).json({ message: err.message || '서버 오류' });
+    }
+}
+
+export const getUserInfoByRFToken = async (req: Request, res: Response) => {
+
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) return res.status(401).json({ message: '111 리프레시 토큰이 만료되거나 없음' });
+    try {
+        const payload = verifyRefreshToken(refreshToken);
+        const usn = payload.usn;
+
+        const result = await authService.getUserInfoService(usn);
+        return res.status(200).json({
+            usn: result.usn,
+            nick: result.nick,
+            rating: result.rating,
+            money: result.money,
+            free_cash: result.free_cash,
+            real_cash: result.real_cash
+        })
+    } catch (err: any) {
+        return res.status(401).json({ message: err.message || '서버 오류' });
     }
 }
 
 export const refreshAccessToken = async (req: Request, res: Response) => {
     const refreshToken = req.cookies?.refreshToken;
-    if(!refreshToken) return res.status(401).json({message: '리프레시 토큰 만료되거나 없음'});
+    if (!refreshToken) return res.status(401).json({ message: '리프레시 토큰 만료되거나 없음' });
 
-    try{
+    try {
         const payload = verifyRefreshToken(refreshToken);
         const usn = payload.usn;
 
         const saved = await redis.get(`refresh:${usn}`);
-        if(!saved || saved !== refreshToken){
-            return res.status(401).json({message:'토큰 변조 가능성 감지'})
+        if (!saved || saved !== refreshToken) {
+            return res.status(401).json({ message: '토큰 변조 가능성 감지' })
         }
 
         const newAccessToken = signToken(usn);
-        setCookie(res, 'token', newAccessToken, 1000*60*15);
+        setCookie(res, 'token', newAccessToken, 1000 * 60 * 15);
 
-        return res.status(200).json({message: '토큰 갱신 완료'});
+        return res.status(200).json({ message: '토큰 갱신 완료' });
 
-    }catch(err){
-        return res.status(401).json({message: '리프레시 토큰 유효하지 않음'})
+    } catch (err) {
+        return res.status(401).json({ message: '리프레시 토큰 유효하지 않음' })
     }
 }
