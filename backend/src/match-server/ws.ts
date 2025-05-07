@@ -1,6 +1,6 @@
 // WebSocket 설정 및 연결 핸들링
 import WebSocket, { WebSocket as WS } from 'ws';
-import { addToQueue } from './matcher';
+import { addToQueue, removeToQueue } from './matcher';
 import { UserSession } from './types';
 
 export function handleSocketConnection(ws: WS) {
@@ -31,6 +31,8 @@ export function handleSocketConnection(ws: WS) {
     ws.on('close', () => {
         if (userSession) {
             console.log(`❌ Disconnected - usn: ${userSession.usn}, nick: ${userSession.nick}`);
+            removeToQueue(userSession);
+
         } else {
             console.log(`❌ Disconnected - unidentified socket`);
         }

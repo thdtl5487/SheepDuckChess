@@ -6,6 +6,7 @@ import { requireAuth } from '../middlewares/auth';
 import cors from 'cors';
 import cookieParser = require('cookie-parser');
 import { getUserInfo, getUserInfoByRFToken } from './controller/authController';
+import gameRoutes from './routes/gameRoutes';
 
 dotenv.config();
 
@@ -25,7 +26,8 @@ const port = process.env.PORT_API || 4444;
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', authRoutes);
+app.use('/auth', authRoutes);
+app.use('/game', gameRoutes)
 
 app.get('/', (req, res)=>{ // 화면에 전송되는 데이타
     res.send('서버 실행 중~~');

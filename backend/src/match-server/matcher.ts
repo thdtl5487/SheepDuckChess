@@ -8,6 +8,27 @@ const queue: UserSession[] = [];
 export function addToQueue(player: UserSession) {
     console.log(`🎯 User ${player.nick} (${player.rating}) entered the queue`);
     queue.push(player);
+
+    console.log(`curent Queue player : `);
+    queue.forEach((p) => {
+        console.log(`- ${p.nick}`);
+    });
+    console.log("------------------");
+}
+
+export function removeToQueue(player: UserSession){
+    console.log(`😇 remove ${player.nick} from queue`)
+
+    const index = queue.indexOf(player);
+    if(index !== -1){
+        queue.splice(index, 1);
+    }
+    
+    console.log(`curent Queue player : `);
+    queue.forEach((p) => {
+        console.log(`- ${p.nick}`);
+    });
+    console.log("------------------");
 }
 
 // 매 2초마다 +-20씩 허용됨

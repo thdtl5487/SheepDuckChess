@@ -70,7 +70,8 @@ export const findUserByUsn = async (usn: number) => {
 
 export const findUserSkinInfoByUsn = async (usn: number) => {
     let result = await query(
-        `SELECT usn, piece_skin_pawn, piece_skin_knight, piece_skin_bishop, piece_skin_rook, piece_skin_queen, piece_skin_king, board_skin, character_id`, [usn]
+        `SELECT usn, piece_skin_pawn, piece_skin_knight, piece_skin_bishop, piece_skin_rook, piece_skin_queen, piece_skin_king, board_skin, character_id
+        from sdc_user_skin_setting WHERE usn = $1`, [usn]
     )
     return result.rows[0];
 }
