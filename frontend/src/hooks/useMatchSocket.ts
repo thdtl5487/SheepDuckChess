@@ -1,25 +1,35 @@
 import { useEffect, useRef } from "react";
 import { User } from "../types/user";
-import { useNavigate } from "react-router-dom";
 
+// 매칭이 성사되었을 때 전달되는 payload 타입 정의
 type MatchFoundPayload = {
-    user: User,
-    triggerQueue: boolean,
-    onMatched: (payload: MatchFoundPayload) => void
+    user: User;
+    triggerQueue: boolean;
+    onMatched: (payload: MatchFoundPayload) => void;
 };
+
+/**
+ * useMatchSocket
+ * - 매칭을 위한 WebSocket을 생성하고 관리하는 커스텀 훅
+ * - triggerQueue가 true가 되면 소켓 연결 + JOIN_QUEUE 전송
+ * - 매칭 성사 시 onMatched 콜백 실행
+ * - 외부에서 매칭 취소(LEAVE_QUEUE)를 보낼 수 있도록 socketRef 반환
+ */
 export function useMatchSocket(
     user: User,
     triggerQueue: boolean,
     onMatched: (payload: MatchFoundPayload) => void
-) {
+): React.MutableRefObject<WebSocket | null> {
     const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
         if (!triggerQueue) return;
 
-        const socket = new WebSocket("ws://localhost:4001");
+        // 소켓 연결
+        const socket = new WebSocket("ws://localhost:4001"); // match-server 주소
         socketRef.current = socket;
 
+        // 연결되었을 때 JOIN_QUEUE 전송
         socket.onopen = () => {
             socket.send(JSON.stringify({
                 type: "JOIN_QUEUE",
@@ -36,21 +46,28 @@ export function useMatchSocket(
                         piece_skin_queen: user.pieceSkin.queen,
                         piece_skin_king: user.pieceSkin.king,
                         board_skin: user.boardSkin,
-                        character_id: user.character
+                        character_id: user.character,
                     }
                 }
             }));
         };
 
+        // 서버로부터 메시지 수신
         socket.onmessage = (e) => {
             const msg = JSON.parse(e.data);
+
             if (msg.type === "MATCH_FOUND") {
+                // 매칭 성공 시 콜백 실행
                 onMatched(msg.payload);
             }
         };
 
+        // 언마운트 또는 재접속 시 소켓 종료
         return () => {
             socket.close();
         };
-    }, [triggerQueue]);
+    }, [triggerQueue, user, onMatched]);
+
+    // socketRef를 반환하여 외부에서 메시지 전송 가능하게 함
+    return socketRef;
 }

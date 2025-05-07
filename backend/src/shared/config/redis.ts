@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log(`포트 위치 : ${process.env.REDIS_PORT}`)
+console.log(`레디스 포트 위치 : ${process.env.REDIS_PORT}`)
 
 const redis = createClient({
     socket:{

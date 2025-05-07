@@ -21,7 +21,9 @@ const MatchOverlay = ({ opponentNick, yourColor, onEnterQueue, onFinished }: Mat
     const [matched, setMatched] = useState(false);
     const [bounceOnEnter, setBounceOnEnter] = useState(false);
     const [bounceOnExit, setBounceOnExit] = useState(false);
+    
 
+    
 
     /**
      * 초기 애니메이션 흐름:
@@ -72,6 +74,7 @@ const MatchOverlay = ({ opponentNick, yourColor, onEnterQueue, onFinished }: Mat
 
     return (
         <AnimatePresence>
+            ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ
             <motion.div
                 initial={{ top: "-100%" }} // 성문이 위에서 시작
                 animate={{ top: gateUp ? "-100%" : "0%" }} // 올라가거나 내려오거나
@@ -88,10 +91,9 @@ const MatchOverlay = ({ opponentNick, yourColor, onEnterQueue, onFinished }: Mat
                             ? [0, -80, 4, -2, 0] // 올라가기 직전 덜컹
                             : bounceOnEnter
                                 ? [0, -10, 5, -5, 0]  // 내려온 직후 덜컹
-                            : 0
+                                : 0
                     }}
                     transition={{
-                        delay: 1.1,
                         duration: 0.4,
                         ease: "easeInOut"
                     }}

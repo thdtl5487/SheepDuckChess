@@ -17,7 +17,7 @@ export default function SignUpPage() {
     }
 
     try {
-      const response = await api.post("/api/signup", {
+      const response = await api.post("/auth/signup", {
         loginType: 0,
         loginId,
         loginPw,

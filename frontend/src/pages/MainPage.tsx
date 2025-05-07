@@ -20,9 +20,20 @@ const MainPage = (): ReactElement | null => {
         setMatchingStarted(true);
     };
 
-    useMatchSocket(user!, triggerQueue, (payload) => {
+    const socketRef = useMatchSocket(user!, triggerQueue, (payload) => {
         setMatchedInfo(payload);
     });
+
+    const handleCancelMatch = () => {
+        if (socketRef.current?.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+                type: "LEAVE_QUEUE",
+                usn: user!.usn,
+            }));
+        }
+        setMatchingStarted(false);
+        setMatchedInfo(null);
+    };
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -47,12 +58,20 @@ const MainPage = (): ReactElement | null => {
     return (
         <div className="flex flex-col items-center justify-center h-screen bg-gray-100 relative">
             {matchingStarted && (
-                <MatchOverlay
-                    opponentNick={matchedInfo?.opponentNick}
-                    yourColor={matchedInfo?.yourColor}
-                    onEnterQueue={() => setTriggerQueue(true)}
-                    onFinished={() => navigate(`/game/${matchedInfo?.gameId}`)}
-                />
+                <>
+                    <MatchOverlay
+                        opponentNick={matchedInfo?.opponentNick}
+                        yourColor={matchedInfo?.yourColor}
+                        onEnterQueue={() => setTriggerQueue(true)}
+                        onFinished={() => navigate(`/game/${matchedInfo?.gameId}`)}
+                    />
+                    <button
+                        className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-500 text-white rounded hover:bg-red-600 z-50"
+                        onClick={handleCancelMatch}
+                    >
+                        매칭 취소
+                    </button>
+                </>
             )}
             <h1 className="text-3xl font-bold mb-6">🐑 Welcome SheepDuckChess 🦆</h1>
             <h1 className="text-3xl font-bold mb-6">🐑 {user.nick} 🦆</h1>
