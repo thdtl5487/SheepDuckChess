@@ -79,10 +79,21 @@ const isValidMove = (
     type: Piece["type"],
     color: Piece["color"],
     board: Piece[],
-    moved: { [pos: string]: boolean }
+    moved: { [pos: string]: boolean },
+    enPassantTarget: string | null
 ): boolean => {
     const dx = to.charCodeAt(0) - from.charCodeAt(0);
     const dy = parseInt(to[1]) - parseInt(from[1]);
+
+    // 앙파상 허용
+    if (
+        type === "pawn" &&
+        enPassantTarget === to &&
+        Math.abs(dx) === 1 &&
+        dy === (color === "white" ? 1 : -1)
+    ) {
+        return true;
+    }
 
     const isEnemy = (pos: string) => {
         const target = board.find((p) => p.position === pos);
@@ -237,6 +248,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
     const [promotionTarget, setPromotionTarget] = useState<Piece | null>(null);
     const [promotionSource, setPromotionSource] = useState<string | null>(null);
     const [movedPieces, setMovedPieces] = useState<{ [pos: string]: boolean }>({});
+    const [enPassantTarget, setEnPassantTarget] = useState<string | null>(null); // 잡을 수 있는 폰의 위치
 
     const handleSquareClick = (pos: string) => {
 
@@ -247,7 +259,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                 // 이동 가능한 칸 하이라이트 계산
                 const possibleSquares = [...Array(8)].flatMap((_, rank) =>
                     [...Array(8)].map((_, file) => coordsToPosition(file, rank)).filter((to) =>
-                        isValidMove(pos, to, piece.type, piece.color, pieces, movedPieces)
+                        isValidMove(pos, to, piece.type, piece.color, pieces, movedPieces, enPassantTarget)
                     )
                 );
 
@@ -268,7 +280,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                 setCaptureSquares([]);
             } else {
                 const selectedPiece = pieces.find((p) => p.position === selectedPos);
-                if (selectedPiece && isValidMove(selectedPos, pos, selectedPiece.type, selectedPiece.color, pieces, movedPieces)) {
+                if (selectedPiece && isValidMove(selectedPos, pos, selectedPiece.type, selectedPiece.color, pieces, movedPieces, enPassantTarget)) {
 
                     // 🔥 캐슬링 체크
                     const castling = isCastlingMove(
@@ -297,6 +309,35 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                         return;
                     }
 
+
+                    // 🪓 앙파상
+                    const isEnPassantCapture =
+                        selectedPiece.type === "pawn" && pos === enPassantTarget;
+
+                    if (isEnPassantCapture) {
+                        const captureRank =
+                            selectedPiece.color === "white"
+                                ? parseInt(pos[1]) - 1
+                                : parseInt(pos[1]) + 1;
+                        const capturedPos = `${pos[0]}${captureRank}`;
+
+                        setPieces(prev =>
+                            prev
+                                .filter(p => p.position !== capturedPos && p.position !== selectedPos)
+                                .concat({ ...selectedPiece, position: pos })
+                        );
+                        setSelectedPos(null);
+                        setHighlightSquares([]);
+                        setCaptureSquares([]);
+                        setEnPassantTarget(null);
+                        setMovedPieces(prev => ({
+                            ...prev,
+                            [selectedPos]: true,
+                        }));
+                        return;
+                    }
+
+
                     const movedPiece = { ...selectedPiece, position: pos };
 
                     // ✅ 이동 후 프로모션 조건 검사
@@ -307,6 +348,19 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                         setHighlightSquares([]);
                         setCaptureSquares([]);
                         return;
+                    }
+
+                    // ♟️ 일반 이동
+                    const isPawnDoubleStep =
+                        selectedPiece.type === "pawn" &&
+                        Math.abs(parseInt(pos[1]) - parseInt(selectedPos[1])) === 2;
+
+                    if (isPawnDoubleStep) {
+                        const file = pos[0];
+                        const midRank = (parseInt(pos[1]) + parseInt(selectedPos[1])) / 2;
+                        setEnPassantTarget(`${file}${midRank}`);
+                    } else {
+                        setEnPassantTarget(null);
                     }
 
                     const updated = pieces
@@ -324,87 +378,126 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
     };
 
     return (
-        <div
-            className="relative"
-            style={{ width: squareSize * 8, height: squareSize * 8 }}
-        >
-            {[...Array(8)].map((_, rank) =>
-                [...Array(8)].map((_, file) => {
-                    const drawRank = isFlipped ? rank : 7 - rank;
-                    const drawFile = isFlipped ? 7 - file : file;
-                    const isDark = (drawRank + drawFile) % 2 === 1;
-                    const pos = coordsToPosition(file, rank, isFlipped);
-                    const isSelected = pos === selectedPos;
-                    const isHighlighted = highlightSquares.includes(pos);
-                    const isCapture = captureSquares.includes(pos);
-
+        <div className="relative">
+            {/* 좌표 표시 */}
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                {/* 왼쪽: 숫자 (랭크) */}
+                {[...Array(8)].map((_, i) => {
+                    const rank = isFlipped ? i + 1 : 8 - i;
                     return (
                         <div
-                            key={`${file}-${rank}`}
-                            onClick={() => handleSquareClick(pos)}
-                            className={`absolute w-[60px] h-[60px] cursor-pointer border ${isDark ? "bg-green-700" : "bg-green-200"} ${isSelected
-                                ? "border-yellow-400"
-                                : isCapture
-                                    ? "border-red-500 border-2"
-                                    : isHighlighted
-                                        ? "border-blue-400 border-2"
-                                        : "border-transparent"
-                                }`}
-                            style={{
-                                top: rank * squareSize,
-                                left: file * squareSize,
-                            }}
-                        />
+                            key={`rank-${i}`}
+                            className="absolute left-[-20px] text-xs text-white"
+                            style={{ top: i * squareSize + 20 }}
+                        >
+                            {rank}
+                        </div>
                     );
-                })
-            )}
+                })}
 
-            {/* 기물 렌더링 */}
-            {pieces.map((piece, i) => {
-                const { x, y } = positionToCoords(piece.position, isFlipped);
-                const isKnight = piece.type === "knight";
+                {/* 아래쪽: 알파벳 (파일) */}
+                {[...Array(8)].map((_, i) => {
+                    const file = String.fromCharCode("a".charCodeAt(0) + (isFlipped ? 7 - i : i));
+                    return (
+                        <div
+                            key={`file-${i}`}
+                            className="absolute bottom-[-18px] text-xs text-white"
+                            style={{ left: i * squareSize + 20 }}
+                        >
+                            {file}
+                        </div>
+                    );
+                })}
+            </div>
 
-                return (
-                    <motion.div
-                        key={i}
-                        initial={false}
-                        animate={{ x, y }}
-                        transition={{
-                            type: isKnight ? "spring" : "tween",
-                            duration: isKnight ? 0.4 : 0.3,
-                            ease: "easeInOut",
-                        }}
-                        className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl ${piece.color === "black" ? "text-black" : "text-white"}`}
-                        style={{ pointerEvents: "none" }}
-                    >
-                        {pieceIcons[piece.color][piece.type]}
-                    </motion.div>
-                );
-            })}
+            <div
+                className="relative"
+                style={{ width: squareSize * 8, height: squareSize * 8 }}
+            >
+                {[...Array(8)].map((_, rank) =>
+                    [...Array(8)].map((_, file) => {
+                        const drawRank = isFlipped ? rank : 7 - rank;
+                        const drawFile = isFlipped ? 7 - file : file;
+                        const isDark = (drawRank + drawFile) % 2 === 1;
+                        const pos = coordsToPosition(file, rank, isFlipped);
+                        const isSelected = pos === selectedPos;
+                        const isHighlighted = highlightSquares.includes(pos);
+                        const isCapture = captureSquares.includes(pos);
 
-            {/* 프로모션 모달 */}
-            {promotionTarget && (
-                <PromotionModal
-                    color={promotionTarget.color}
-                    onSelect={(type) => {
-                        const promoted = promote(promotionTarget, type);
-                        console.log("🧼 removing piece at", promotionTarget.position);
-                        console.log("🧼 pieces map:", pieces.map(p => p.position));
-                        setPieces(prev =>
-                            prev
-                                .filter(p =>
-                                    p.position !== promotionTarget.position && // 상대 기물 제거
-                                    p.position !== promotionSource             // 내 폰 제거 ← 이게 핵심!!
-                                )
-                                .concat(promote(promotionTarget, type))
+                        return (
+                            <div
+                                key={`${file}-${rank}`}
+                                onClick={() => {
+                                    // 앙파상 테스트를 위해 클릭 위치 및 선택 기물 정보 출력
+                                    console.log("클릭한 위치:", pos);
+                                    console.log("선택된 기물:", selectedPos);
+                                    handleSquareClick(pos);
+                                }}
+                                className={`absolute w-[60px] h-[60px] cursor-pointer border ${isDark ? "bg-green-700" : "bg-green-200"} ${isSelected
+                                    ? "border-yellow-400"
+                                    : isCapture
+                                        ? "border-red-500 border-2"
+                                        : isHighlighted
+                                            ? "border-blue-400 border-2"
+                                            : "border-transparent"
+                                    }`}
+                                style={{
+                                    top: rank * squareSize,
+                                    left: file * squareSize,
+                                }}
+                            />
                         );
-                        setPromotionTarget(null);
-                        setPromotionSource(null);
-                    }}
-                />
-            )}
+                    })
+                )}
+
+                {/* 기물 렌더링 */}
+                {pieces.map((piece, i) => {
+                    const { x, y } = positionToCoords(piece.position, isFlipped);
+                    const isKnight = piece.type === "knight";
+
+                    return (
+                        <motion.div
+                            key={i}
+                            initial={false}
+                            animate={{ x, y }}
+                            transition={{
+                                type: isKnight ? "spring" : "tween",
+                                duration: isKnight ? 0.4 : 0.3,
+                                ease: "easeInOut",
+                            }}
+                            className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl ${piece.color === "black" ? "text-black" : "text-white"}`}
+                            style={{ pointerEvents: "none" }}
+                        >
+                            {pieceIcons[piece.color][piece.type]}
+                        </motion.div>
+                    );
+                })}
+
+                {/* 프로모션 모달 */}
+                {promotionTarget && (
+                    <PromotionModal
+                        color={promotionTarget.color}
+                        onSelect={(type) => {
+                            const promoted = promote(promotionTarget, type);
+                            console.log("🧼 removing piece at", promotionTarget.position);
+                            console.log("🧼 pieces map:", pieces.map(p => p.position));
+                            setPieces(prev =>
+                                prev
+                                    .filter(p =>
+                                        p.position !== promotionTarget.position &&
+                                        p.position !== promotionSource
+                                    )
+                                    .concat(promote(promotionTarget, type))
+                            );
+                            setPromotionTarget(null);
+                            setPromotionSource(null);
+                        }}
+                    />
+                )}
+            </div>
         </div>
     );
+
 };
 
 export { ChessBoard, isValidMove, isPromotionSquare, promote, PromotionModal };
