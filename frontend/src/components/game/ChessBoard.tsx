@@ -73,7 +73,14 @@ const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
 // (생략된 코드 유지)
 
 // 유효한 이동인지 확인하는 간단한 룰 (폰 공격, 캐슬링, 앙파상, 프로모션 일부 반영)
-const isValidMove = (from: string, to: string, type: Piece["type"], color: Piece["color"], board: Piece[]): boolean => {
+const isValidMove = (
+    from: string,
+    to: string,
+    type: Piece["type"],
+    color: Piece["color"],
+    board: Piece[],
+    moved: { [pos: string]: boolean }
+): boolean => {
     const dx = to.charCodeAt(0) - from.charCodeAt(0);
     const dy = parseInt(to[1]) - parseInt(from[1]);
 
@@ -82,24 +89,25 @@ const isValidMove = (from: string, to: string, type: Piece["type"], color: Piece
         return !!target && target.color !== color;
     };
 
+    // ✅ 캐슬링 허용 처리
+    if (type === "king") {
+        const castling = isCastlingMove(from, to, type, color, board, moved);
+        if (castling) return true;
+    }
+
     switch (type) {
         case "pawn": {
             const direction = color === "white" ? 1 : -1;
             const startRank = color === "white" ? 2 : 7;
             const targetPiece = board.find(p => p.position === to);
 
-            // 기본 전진
             if (dx === 0 && dy === direction && !targetPiece) return true;
-
-            // 첫 수에 2칸 전진
             if (dx === 0 && dy === 2 * direction && parseInt(from[1]) === startRank && !targetPiece) {
                 const intermediate = from[0] + (parseInt(from[1]) + direction);
                 return !board.find(p => p.position === intermediate);
             }
 
-            // 대각선 공격
             if (Math.abs(dx) === 1 && dy === direction) return isEnemy(to);
-
             return false;
         }
         case "rook": return dx === 0 || dy === 0;
@@ -121,27 +129,56 @@ const isPromotionSquare = (piece: Piece): boolean => {
 const promote = (piece: Piece, to: Piece["type"]): Piece => {
     const validTypes: Piece["type"][] = ["queen", "rook", "bishop", "knight"];
     if (!validTypes.includes(to)) throw new Error("Invalid promotion piece type");
-    return { ...piece, type: to };
+    return { ...piece, type: to }; // 기존 color와 position 유지
 };
 
 // 프로모션 선택 모달
-const PromotionModal = ({ color, onSelect }: { color: "white" | "black"; onSelect: (type: Piece["type"]) => void }) => {
-    const options: Array<"queen" | "rook" | "bishop" | "knight"> = ["queen", "rook", "bishop", "knight"];
-    const iconMap: Record<"white" | "black", Record<"queen" | "rook" | "bishop" | "knight", string>> = {
-        white: { queen: "♕", rook: "♖", bishop: "♗", knight: "♘" },
-        black: { queen: "♛", rook: "♜", bishop: "♝", knight: "♞" },
+const PromotionModal = ({
+    color,
+    onSelect,
+}: {
+    color: "white" | "black";
+    onSelect: (type: Piece["type"]) => void;
+}) => {
+    const options: Array<"queen" | "rook" | "bishop" | "knight"> = [
+        "queen",
+        "rook",
+        "bishop",
+        "knight",
+    ];
+    const iconMap: Record<
+        "white" | "black",
+        Record<"queen" | "rook" | "bishop" | "knight", string>
+    > = {
+        white: {
+            queen: "♕",
+            rook: "♖",
+            bishop: "♗",
+            knight: "♘",
+        },
+        black: {
+            queen: "♛",
+            rook: "♜",
+            bishop: "♝",
+            knight: "♞",
+        },
     };
+
+    const iconColorClass = color === "white" ? "text-black" : "text-white";
+    const modalBgColor = "bg-gray-700"; // 어두운 회색
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white p-4 rounded shadow-md text-center">
+            <div
+                className={`${modalBgColor} p-4 rounded shadow-md text-center text-white`}
+            >
                 <p className="mb-2 font-bold">프로모션 선택</p>
                 <div className="flex gap-4 justify-center">
                     {options.map((type) => (
                         <button
                             key={type}
                             onClick={() => onSelect(type)}
-                            className="text-3xl p-2 hover:bg-gray-200 rounded"
+                            className={`text-3xl p-2 hover:bg-gray-600 rounded ${iconColorClass}`}
                         >
                             {iconMap[color][type]}
                         </button>
@@ -152,16 +189,57 @@ const PromotionModal = ({ color, onSelect }: { color: "white" | "black"; onSelec
     );
 };
 
+// 캐슬링 이동 관련 기능
+const isCastlingMove = (
+    from: string,
+    to: string,
+    type: Piece["type"],
+    color: Piece["color"],
+    board: Piece[],
+    moved: { [pos: string]: boolean }
+): { rookFrom: string; rookTo: string } | null => {
+    if (type !== "king") return null;
+    const rank = color === "white" ? "1" : "8";
+    if (from !== `e${rank}`) return null;
+
+    // 킹사이드 캐슬링
+    if (to === `g${rank}`) {
+        if (
+            !moved[`e${rank}`] &&
+            !moved[`h${rank}`] &&
+            !board.find((p) => p.position === `f${rank}` || p.position === `g${rank}`)
+        ) {
+            return { rookFrom: `h${rank}`, rookTo: `f${rank}` };
+        }
+    }
+
+    // 퀸사이드 캐슬링
+    if (to === `c${rank}`) {
+        if (
+            !moved[`e${rank}`] &&
+            !moved[`a${rank}`] &&
+            !board.find((p) => p.position === `b${rank}` || p.position === `c${rank}` || p.position === `d${rank}`)
+        ) {
+            return { rookFrom: `a${rank}`, rookTo: `d${rank}` };
+        }
+    }
+
+    return null;
+};
+
+
 // 체스보드 컴포넌트
 const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
     const [pieces, setPieces] = useState<Piece[]>(initialBoard);
     const [selectedPos, setSelectedPos] = useState<string | null>(null);
     const [highlightSquares, setHighlightSquares] = useState<string[]>([]);
     const [captureSquares, setCaptureSquares] = useState<string[]>([]);
-    const [promotionTarget, setPromotionTarget] = useState<{ pos: string; color: "white" | "black" } | null>(null);
-
+    const [promotionTarget, setPromotionTarget] = useState<Piece | null>(null);
+    const [promotionSource, setPromotionSource] = useState<string | null>(null);
+    const [movedPieces, setMovedPieces] = useState<{ [pos: string]: boolean }>({});
 
     const handleSquareClick = (pos: string) => {
+
         if (!selectedPos) {
             const piece = pieces.find((p) => p.position === pos);
             if (piece) {
@@ -169,7 +247,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                 // 이동 가능한 칸 하이라이트 계산
                 const possibleSquares = [...Array(8)].flatMap((_, rank) =>
                     [...Array(8)].map((_, file) => coordsToPosition(file, rank)).filter((to) =>
-                        isValidMove(pos, to, piece.type, piece.color, pieces)
+                        isValidMove(pos, to, piece.type, piece.color, pieces, movedPieces)
                     )
                 );
 
@@ -190,7 +268,47 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                 setCaptureSquares([]);
             } else {
                 const selectedPiece = pieces.find((p) => p.position === selectedPos);
-                if (selectedPiece && isValidMove(selectedPos, pos, selectedPiece.type, selectedPiece.color, pieces)) {
+                if (selectedPiece && isValidMove(selectedPos, pos, selectedPiece.type, selectedPiece.color, pieces, movedPieces)) {
+
+                    // 🔥 캐슬링 체크
+                    const castling = isCastlingMove(
+                        selectedPos,
+                        pos,
+                        selectedPiece.type,
+                        selectedPiece.color,
+                        pieces,
+                        movedPieces
+                    );
+
+                    if (castling) {
+                        setPieces(prev => prev.map(p => {
+                            if (p.position === selectedPos) return { ...p, position: pos }; // 킹 이동
+                            if (p.position === castling.rookFrom) return { ...p, position: castling.rookTo }; // 룩 이동
+                            return p;
+                        }));
+                        setMovedPieces(prev => ({
+                            ...prev,
+                            [selectedPos]: true,
+                            [castling.rookFrom]: true,
+                        }));
+                        setSelectedPos(null);
+                        setHighlightSquares([]);
+                        setCaptureSquares([]);
+                        return;
+                    }
+
+                    const movedPiece = { ...selectedPiece, position: pos };
+
+                    // ✅ 이동 후 프로모션 조건 검사
+                    if (isPromotionSquare(movedPiece)) {
+                        setPromotionTarget(movedPiece); // 전체 Piece 전달
+                        setPromotionSource(selectedPos);
+                        setSelectedPos(null);
+                        setHighlightSquares([]);
+                        setCaptureSquares([]);
+                        return;
+                    }
+
                     const updated = pieces
                         .filter((p) => p.position !== pos)
                         .map((p) =>
@@ -263,6 +381,28 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                     </motion.div>
                 );
             })}
+
+            {/* 프로모션 모달 */}
+            {promotionTarget && (
+                <PromotionModal
+                    color={promotionTarget.color}
+                    onSelect={(type) => {
+                        const promoted = promote(promotionTarget, type);
+                        console.log("🧼 removing piece at", promotionTarget.position);
+                        console.log("🧼 pieces map:", pieces.map(p => p.position));
+                        setPieces(prev =>
+                            prev
+                                .filter(p =>
+                                    p.position !== promotionTarget.position && // 상대 기물 제거
+                                    p.position !== promotionSource             // 내 폰 제거 ← 이게 핵심!!
+                                )
+                                .concat(promote(promotionTarget, type))
+                        );
+                        setPromotionTarget(null);
+                        setPromotionSource(null);
+                    }}
+                />
+            )}
         </div>
     );
 };
