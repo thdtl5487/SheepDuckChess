@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "../types/user";
-import ChessBoard from "../components/game/ChessBoard";
+import { ChessBoard } from "../components/game/ChessBoard";
 import PlayerPanel from "../components/game/PlayerPanel";
 import GameLog from "../components/game/GameLog";
 import OverlayEffects from "../components/game/OverlayEffects";
