@@ -300,6 +300,7 @@ function isCheckmate(color: "white" | "black", board: Piece[]): boolean {
     return true;
 }
 
+// 스테일메이트 감지
 function isStalemate(color: "white" | "black", board: Piece[]): boolean {
     if (isKingInCheck(color, board)) return false;
 
@@ -309,6 +310,9 @@ function isStalemate(color: "white" | "black", board: Piece[]): boolean {
         for (let file = 0; file < 8; file++) {
             for (let rank = 0; rank < 8; rank++) {
                 const to = coordsToPosition(file, rank);
+
+                if(to === piece.position) continue;
+
                 if (
                     isValidMove(piece.position, to, piece.type, piece.color, board, {}, null)
                 ) {
@@ -316,8 +320,12 @@ function isStalemate(color: "white" | "black", board: Piece[]): boolean {
                         .filter(p => p.position !== piece.position && p.position !== to)
                         .concat({ ...piece, position: to });
 
-                    if (!isKingInCheck(color, simulated)) {
-                        return false; // 이동 가능한 수 존재
+                    const isInCheck = isKingInCheck(color, simulated);
+
+                    console.log(`[스테일 체크] ${piece.type}(${piece.position} → ${to}) = ${!isInCheck ? '합법' : '불가'}`);
+
+                    if (!isInCheck) {
+                        return false; // 하나라도 합법 수가 있으면 스테일메이트 아님
                     }
                 }
             }
@@ -326,6 +334,7 @@ function isStalemate(color: "white" | "black", board: Piece[]): boolean {
 
     return true;
 }
+
 
 
 
@@ -370,26 +379,21 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
 
 
     // 체크메이트 테스트 코드
-    // useEffect(() => {
-    //     setPieces([
-    //         // 🟥 흑 킹 - 구석에 몰려있음
-    //         { type: "king", color: "black", position: "e7" },
+    useEffect(() => {
+        setPieces([
+            // 🟥 흑 킹 - 구석에 몰려있음
+            { type: "king", color: "black", position: "h8" },
 
-    //         // 🧱 흑 기물들 - 도망갈 길 차단
-    //         { type: "queen", color: "white", position: "g6" },
-    //         { type: "pawn", color: "black", position: "h7" },
+            // ✅ 체크 유발용 흰색 킹
+            { type: "king", color: "white", position: "e1" },
 
-    //         // ✅ 체크 유발용 흰색 킹
-    //         { type: "king", color: "white", position: "f1" },
-
-    //         // ⚔️ 핵심! 백 폰 - 앙파상으로 잡고 체크메이트 유도
-    //         { type: "pawn", color: "white", position: "e5" },
-
-    //         // ❌ 흑이 더블스텝 할 폰
-    //         { type: "pawn", color: "black", position: "d7" },
-    //     ]);
-    //     setTurn("black"); // 흑이 먼저 d7 → d5로 더블스텝 해야 함
-    // }, []);
+            // 🧱 흑 기물들 - 도망갈 길 차단
+            { type: "rook", color: "white", position: "a7" },
+            { type: "rook", color: "white", position: "c3" },
+            { type: "rook", color: "white", position: "a1" },
+        ]);
+        setTurn("white"); // 흑이 먼저 d7 → d5로 더블스텝 해야 함
+    }, []);
 
 
     const handleSquareClick = (pos: string) => {
@@ -452,11 +456,25 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                     );
 
                     if (castling) {
-                        setPieces(prev => prev.map(p => {
+
+                        const simulatedBoard = pieces.map(p => {
                             if (p.position === selectedPos) return { ...p, position: pos }; // 킹 이동
                             if (p.position === castling.rookFrom) return { ...p, position: castling.rookTo }; // 룩 이동
                             return p;
-                        }));
+                        });
+
+                        const nextTurn = turn === "white" ? "black" : "white";
+                        if (isKingInCheck(nextTurn, simulatedBoard)) {
+                            console.log("🟥 체크입니다!");
+                        }
+                        if (isCheckmate(nextTurn, simulatedBoard)) {
+                            console.log("🏁 캐슬링으로 체크메이트!");
+                        }
+                        if (isStalemate(nextTurn, simulatedBoard)) {
+                            console.log("🤝 캐슬링 스테일메이트 (무승부)");
+                        }
+
+                        setPieces(simulatedBoard);
                         setMovedPieces(prev => ({
                             ...prev,
                             [selectedPos]: true,
@@ -489,14 +507,12 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                         if (isKingInCheck(nextTurn, simulatedBoard)) {
                             console.log("🟥 앙파상 체크입니다!");
                         }
-
                         if (isCheckmate(nextTurn, simulatedBoard)) {
                             console.log("🏁 앙파상 체크메이트입니다!");
                             // 👉 이후: 모달 띄우거나 게임 종료 처리
                         }
-
                         if (isStalemate(nextTurn, simulatedBoard)) {
-                            console.log("🤝 스테일메이트입니다 (무승부)");
+                            console.log("🤝 앙파상 스테일메이트입니다 (무승부)");
                         }
 
                         setPieces(prev =>
@@ -572,7 +588,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                         // 👉 이후: 모달 띄우거나 게임 종료 처리
                     }
                     if (isStalemate(nextTurn, simulatedBoard)) {
-                        console.log("🤝 스테일메이트입니다 (무승부)");
+                        console.log("🤝 일반 이동 스테일메이트입니다 (무승부)");
                     }
 
                     setTurn(prev => (prev === "white" ? "black" : "white"));
@@ -699,7 +715,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                                 console.log("🏁 프로모션 체크메이트입니다!");
                             }
                             if (isStalemate(nextTurn, simulatedBoard)) {
-                                console.log("🤝 스테일메이트입니다 (무승부)");
+                                console.log("🤝 프로모션 스테일메이트입니다 (무승부)");
                             }
 
                             setPieces(simulatedBoard);
