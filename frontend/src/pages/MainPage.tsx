@@ -7,6 +7,8 @@ import LogoutButton from "../components/btn_logout";
 import api from "../api/axiosInstance";
 import { useMatchSocket } from "../hooks/useMatchSocket";
 import MatchOverlay from "../components/MatchOverlay";
+import { useSetRecoilState } from "recoil";
+import { matchInfoAtom } from "../types/matchInfo";
 
 const MainPage = (): ReactElement | null => {
     const [user, setUser] = useRecoilState(userState);
@@ -19,9 +21,16 @@ const MainPage = (): ReactElement | null => {
     const handleMatchStart = () => {
         setMatchingStarted(true);
     };
+    
+    const setMatchInfo = useSetRecoilState(matchInfoAtom); 
 
     const socketRef = useMatchSocket(user!, triggerQueue, (payload) => {
         setMatchedInfo(payload);
+        setMatchInfo({           
+            gameId: payload.gameId,
+            yourColor: payload.yourColor,
+            opponentNick: payload.opponentNick
+        });
     });
 
     const handleCancelMatch = () => {

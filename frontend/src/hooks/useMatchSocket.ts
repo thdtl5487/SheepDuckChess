@@ -3,9 +3,11 @@ import { User } from "../types/user";
 
 // 매칭이 성사되었을 때 전달되는 payload 타입 정의
 type MatchFoundPayload = {
-    user: User;
-    triggerQueue: boolean;
-    onMatched: (payload: MatchFoundPayload) => void;
+    gameId: string;
+    yourColor: "white" | "black";
+    opponentNick: string;
+    user?: User;
+    triggerQueue?: boolean;
 };
 
 /**

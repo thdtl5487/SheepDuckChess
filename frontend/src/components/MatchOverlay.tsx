@@ -74,7 +74,6 @@ const MatchOverlay = ({ opponentNick, yourColor, onEnterQueue, onFinished }: Mat
 
     return (
         <AnimatePresence>
-            ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ
             <motion.div
                 initial={{ top: "-100%" }} // 성문이 위에서 시작
                 animate={{ top: gateUp ? "-100%" : "0%" }} // 올라가거나 내려오거나

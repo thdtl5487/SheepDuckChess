@@ -1,6 +1,6 @@
 // 서버 실행 진입점
 import http from 'http';
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { handleSocketConnection } from './ws';
 import { config } from 'dotenv';
 

@@ -23,277 +23,12 @@ const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
     },
 };
 
-
-
-// const coordsToPosition = (file: number, rank: number, flipped = false): string => {
-//     const f = flipped ? 7 - file : file;
-//     const r = flipped ? rank + 1 : 8 - rank;
-//     return String.fromCharCode("a".charCodeAt(0) + f) + r.toString();
-// };
-
-// // 유효한 이동인지 확인하는 간단한 룰 (폰 공격, 캐슬링, 앙파상, 프로모션 일부 반영)
-// const isValidMove = (
-//     from: string,
-//     to: string,
-//     type: Piece["type"],
-//     color: Piece["color"],
-//     board: Piece[],
-//     moved: { [pos: string]: boolean },
-//     enPassantTarget: string | null
-// ): boolean => {
-//     const dx = to.charCodeAt(0) - from.charCodeAt(0);
-//     const dy = parseInt(to[1]) - parseInt(from[1]);
-
-//     const targetPiece = board.find((p) => p.position === to);
-//     if (targetPiece && targetPiece.color === color) return false; // 모든 기물 공통
-
-
-//     // 앙파상 허용
-//     if (
-//         type === "pawn" &&
-//         enPassantTarget === to &&
-//         Math.abs(dx) === 1 &&
-//         dy === (color === "white" ? 1 : -1)
-//     ) {
-//         return true;
-//     }
-
-//     const isEnemy = (pos: string) => {
-//         const target = board.find((p) => p.position === pos);
-//         return !!target && target.color !== color;
-//     };
-
-//     // ✅ 캐슬링 허용 처리
-//     if (type === "king") {
-//         const castling = isCastlingMove(from, to, type, color, board, moved);
-//         if (castling) return true;
-//     }
-
-//     switch (type) {
-//         case "pawn": {
-//             const direction = color === "white" ? 1 : -1;
-//             const startRank = color === "white" ? 2 : 7;
-//             const targetPiece = board.find(p => p.position === to);
-
-//             if (dx === 0 && dy === direction && !targetPiece) return true;
-//             if (dx === 0 && dy === 2 * direction && parseInt(from[1]) === startRank && !targetPiece) {
-//                 const intermediate = from[0] + (parseInt(from[1]) + direction);
-//                 return !board.find(p => p.position === intermediate);
-//             }
-
-//             if (Math.abs(dx) === 1 && dy === direction) return isEnemy(to);
-//             return false;
-//         }
-//         case "rook":
-//             return (dx === 0 || dy === 0) && isPathClear(from, to, board);
-//         case "bishop":
-//             return Math.abs(dx) === Math.abs(dy) && isPathClear(from, to, board);
-//         case "queen":
-//             return (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy)) && isPathClear(from, to, board);
-//         case "king": return Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
-//         case "knight": return (Math.abs(dx) === 2 && Math.abs(dy) === 1) || (Math.abs(dx) === 1 && Math.abs(dy) === 2);
-//         default: return false;
-//     }
-// };
-// // 프로모션 처리: 선택창을 띄우기 위한 도달 판별만
-// const isPromotionSquare = (piece: Piece): boolean => {
-//     if (piece.type !== "pawn") return false;
-//     const lastRank = piece.color === "white" ? "8" : "1";
-//     return piece.position[1] === lastRank;
-// };
-
-// // 실제 승격은 외부에서 사용자가 선택한 기물로 type을 교체해야 함
-// const promote = (piece: Piece, to: Piece["type"]): Piece => {
-//     const validTypes: Piece["type"][] = ["queen", "rook", "bishop", "knight"];
-//     if (!validTypes.includes(to)) throw new Error("Invalid promotion piece type");
-//     return { ...piece, type: to }; // 기존 color와 position 유지
-// };
-
-// // 캐슬링 이동 관련 기능
-// const isCastlingMove = (
-//     from: string,
-//     to: string,
-//     type: Piece["type"],
-//     color: Piece["color"],
-//     board: Piece[],
-//     moved: { [pos: string]: boolean }
-// ): { rookFrom: string; rookTo: string } | null => {
-//     if (type !== "king") return null;
-//     const rank = color === "white" ? "1" : "8";
-//     if (from !== `e${rank}`) return null;
-
-//     const isPathAttacked = (squares: string[]): boolean =>
-//         squares.some(square => {
-//             const simulated = board.map(p =>
-//                 p.position === from ? { ...p, position: square } : p
-//             );
-//             return isKingInCheck(color, simulated);
-//         });
-
-//     // 🏰 킹사이드
-//     if (to === `g${rank}`) {
-//         if (
-//             !moved[`e${rank}`] &&
-//             !moved[`h${rank}`] &&
-//             !board.find((p) => p.position === `f${rank}` || p.position === `g${rank}`) &&
-//             !isPathAttacked([`f${rank}`, `g${rank}`])
-//         ) {
-//             return { rookFrom: `h${rank}`, rookTo: `f${rank}` };
-//         }
-//     }
-
-//     // 🏰 퀸사이드
-//     if (to === `c${rank}`) {
-//         if (
-//             !moved[`e${rank}`] &&
-//             !moved[`a${rank}`] &&
-//             !board.find((p) => p.position === `b${rank}` || p.position === `c${rank}` || p.position === `d${rank}`) &&
-//             !isPathAttacked([`d${rank}`, `c${rank}`])
-//         ) {
-//             return { rookFrom: `a${rank}`, rookTo: `d${rank}` };
-//         }
-//     }
-
-//     return null;
-// };
-
-// // 체크 감지
-// function isKingInCheck(color: "white" | "black", board: Piece[]): boolean {
-//     const opponentColor = color === "white" ? "black" : "white";
-
-//     const king = board.find(
-//         (p) => p.type === "king" && p.color === color
-//     );
-//     if (!king) return false;
-
-//     const kingPos = king.position;
-
-//     for (const piece of board) {
-//         if (piece.color !== opponentColor) continue;
-
-//         if (
-//             isValidMove(
-//                 piece.position,
-//                 kingPos,
-//                 piece.type,
-//                 piece.color,
-//                 board,
-//                 {},
-//                 null
-//             )
-//         ) {
-//             return true;
-//         }
-//     }
-
-//     return false;
-// }
-
-// // 체크메이트 감지
-// function isCheckmate(color: "white" | "black", board: Piece[]): boolean {
-//     if (!isKingInCheck(color, board)) return false;
-
-//     const piecesOfColor = board.filter(p => p.color === color);
-
-//     for (const piece of piecesOfColor) {
-//         for (let file = 0; file < 8; file++) {
-//             for (let rank = 0; rank < 8; rank++) {
-//                 const to = coordsToPosition(file, rank);
-//                 if (
-//                     isValidMove(piece.position, to, piece.type, piece.color, board, {}, null)
-//                 ) {
-//                     const simulated = board
-//                         .filter(p => p.position !== piece.position && p.position !== to)
-//                         .concat({ ...piece, position: to });
-
-//                     if (!isKingInCheck(color, simulated)) {
-//                         return false;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return true;
-// }
-
-// // 스테일메이트 감지
-// function isStalemate(color: "white" | "black", board: Piece[]): boolean {
-//     if (isKingInCheck(color, board)) return false;
-
-//     const piecesOfColor = board.filter(p => p.color === color);
-
-//     for (const piece of piecesOfColor) {
-//         for (let file = 0; file < 8; file++) {
-//             for (let rank = 0; rank < 8; rank++) {
-//                 const to = coordsToPosition(file, rank);
-
-//                 if (to === piece.position) continue;
-
-//                 if (
-//                     isValidMove(piece.position, to, piece.type, piece.color, board, {}, null)
-//                 ) {
-//                     const simulated = board
-//                         .filter(p => p.position !== piece.position && p.position !== to)
-//                         .concat({ ...piece, position: to });
-
-//                     const isInCheck = isKingInCheck(color, simulated);
-
-//                     if (!isInCheck) {
-//                         return false; // 하나라도 합법 수가 있으면 스테일메이트 아님
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return true;
-// }
-
-// // 기물 부족 무승부 감지
-// function isInsufficientMaterial(board: Piece[]): boolean {
-//     const white = board.filter(p => p.color === "white");
-//     const black = board.filter(p => p.color === "black");
-
-//     const isKingOnly = (pieces: Piece[]) => pieces.length === 1 && pieces[0].type === "king";
-
-//     const isKingAndMinor = (pieces: Piece[]) =>
-//         pieces.length === 2 &&
-//         pieces.some(p => p.type === "king") &&
-//         pieces.some(p => p.type === "bishop" || p.type === "knight");
-
-//     return (
-//         (isKingOnly(white) && isKingOnly(black)) ||              // 킹 vs 킹
-//         (isKingAndMinor(white) && isKingOnly(black)) ||          // 킹+비숍/나이트 vs 킹
-//         (isKingAndMinor(black) && isKingOnly(white))             // 킹 vs 킹+비숍/나이트
-//     );
-// }
-
-// // 기물 경로 확인용 기능
-// const isPathClear = (from: string, to: string, board: Piece[]): boolean => {
-//     const fileDiff = to.charCodeAt(0) - from.charCodeAt(0);
-//     const rankDiff = parseInt(to[1]) - parseInt(from[1]);
-
-//     const fileStep = Math.sign(fileDiff);
-//     const rankStep = Math.sign(rankDiff);
-
-//     const steps = Math.max(Math.abs(fileDiff), Math.abs(rankDiff));
-//     if (steps <= 1) return true; // 바로 옆은 경로 체크 생략
-
-//     for (let step = 1; step < steps; step++) {
-//         const file = String.fromCharCode(from.charCodeAt(0) + fileStep * step);
-//         const rank = (parseInt(from[1]) + rankStep * step).toString();
-//         const intermediate = `${file}${rank}`;
-//         if (board.find(p => p.position === intermediate)) return false;
-//     }
-
-//     return true;
-// };
-
 // 체스 좌표를 x/y 픽셀 좌표로 변환하는 함수 (isFlipped: 아래가 내 진영인지 여부)
 const positionToCoords = (pos: string, flipped = false) => {
     const file = pos.charCodeAt(0) - "a".charCodeAt(0);
     const rank = parseInt(pos[1]) - 1;
     return {
-        x: flipped ? (7 - file) * squareSize : file * squareSize,
+        x: file * squareSize,
         y: flipped ? rank * squareSize : (7 - rank) * squareSize,
     };
 };
@@ -355,7 +90,7 @@ const PromotionModal = ({
 };
 
 // 체스보드 컴포넌트
-const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
+const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: { isFlipped?: boolean, turnResult?: any; myColor: "white" | "black"; gameId: string; socket: WebSocket | null }) => {
 
     // 상태 정의 시작 --
     const [pieces, setPieces] = useState<Piece[]>(ChessRules.initialBoard);
@@ -371,6 +106,20 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
 
     // 턴 상태 정의
     const [turn, setTurn] = useState<"white" | "black">("white");
+    // 공통 helper: socket 이 열려 있는지 체크
+    // 공통 helper: socket 이 준비되었는지 검사
+    function canSendTurn(socket: WebSocket | null): socket is WebSocket {
+        if (!socket) {
+            console.warn("⚠️ socket 객체가 없습니다.");
+            return false;
+        }
+        if (socket.readyState !== WebSocket.OPEN) {
+            console.warn("⚠️ socket.readyState 가 OPEN 이 아닙니다:", socket.readyState);
+            return false;
+        }
+        return true;
+    }
+
 
 
     // 체크메이트 테스트 코드
@@ -390,8 +139,42 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
     //     setTurn("white"); // 흑이 먼저 d7 → d5로 더블스텝 해야 함
     // }, []);
 
+    useEffect(() => {
+        // ✅ null이면 패스
+        if (!turnResult || !turnResult.board) return;
+
+        setPieces(turnResult.board);
+        setTurn(turnResult.turn);
+
+        const last = turnResult?.lastMove;
+
+        if (!last) {
+            setEnPassantTarget(null);
+            return;
+        }
+
+        const { pieceType, from, to } = last;
+
+        // pawn이 두 칸 점프했을 때만 앙파상 체크
+        if (pieceType === "pawn" && Math.abs(+from[1] - +to[1]) === 2) {
+            // 예: from="e7" to="e5" → target은 "e6"
+            const file = to[0];
+            const rank = (+from[1] + +to[1]) / 2;
+            setEnPassantTarget(`${file}${rank}`);
+        } else {
+            setEnPassantTarget(null);
+        }
+
+        // 턴이 바뀔 때마다 (화이트→블랙, 블랙→화이트) 선택/하이라이트 초기화
+        setSelectedPos(null);
+        setHighlightSquares([]);
+        setCaptureSquares([]);
+    }, [turnResult])
 
     const handleSquareClick = (pos: string) => {
+        console.log("▶️ handleSquareClick", { pos, myColor, turn, socketState: socket?.readyState });
+
+        if (myColor !== turn) return; // 💥 상대 턴이면 클릭 무시
 
         if (!selectedPos) {
             const piece = pieces.find((p) => p.position === pos);
@@ -479,8 +262,17 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                         setSelectedPos(null);
                         setHighlightSquares([]);
                         setCaptureSquares([]);
+                        console.log("턴무브 보낼게요요요");
+                        if (canSendTurn(socket)) {
+                            console.log("턴무브 보낸다잉??");
+                            socket.send(JSON.stringify({
+                                type: "TURN_MOVE",
+                                gameId,
+                                from: selectedPos,
+                                to: pos,
+                            }));
+                        }
                         setTurn(prev => (prev === "white" ? "black" : "white"));
-                        return;
                     }
 
                     // 🪓 앙파상
@@ -524,8 +316,18 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                             ...prev,
                             [selectedPos]: true,
                         }));
+                        console.log("턴무브 보낼게요요요");
+                        if (canSendTurn(socket)) {
+                            console.log("턴무브 보낸다잉??");
+                            socket.send(JSON.stringify({
+                                type: "TURN_MOVE",
+                                gameId,
+                                from: selectedPos,
+                                to: pos,
+                            }));
+                            return;
+                        }
                         setTurn(prev => (prev === "white" ? "black" : "white"));
-                        return;
                     }
 
 
@@ -589,7 +391,18 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                     if (ChessRules.isInsufficientMaterial(simulatedBoard)) {
                         console.log("🤝 기물 부족 무승부 (킹만 남음)");
                     }
+                    console.log("턴무브 보낼게요요요");
 
+                    if (canSendTurn(socket)) {
+                        console.log("턴무브 보낸다잉??");
+                        socket.send(JSON.stringify({
+                            type: "TURN_MOVE",
+                            gameId,
+                            from: selectedPos,
+                            to: pos,
+                        }));
+                        console.log("턴무브 보냈따이");
+                    }
                     setTurn(prev => (prev === "white" ? "black" : "white"));
                 }
                 setSelectedPos(null);
@@ -639,9 +452,12 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                 {[...Array(8)].map((_, rank) =>
                     [...Array(8)].map((_, file) => {
                         const drawRank = isFlipped ? rank : 7 - rank;
-                        const drawFile = isFlipped ? 7 - file : file;
+                        const drawFile = file;
                         const isDark = (drawRank + drawFile) % 2 === 1;
-                        const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
+                        const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
+                        const rankChar = (drawRank + 1).toString();
+                        const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
+                        // const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
                         const isSelected = pos === selectedPos;
                         const isHighlighted = highlightSquares.includes(pos);
                         const isCapture = captureSquares.includes(pos);
@@ -665,7 +481,7 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                                     }`}
                                 style={{
                                     top: rank * squareSize,
-                                    left: file * squareSize,
+                                    left: drawFile * squareSize,
                                 }}
                             />
                         );
@@ -720,6 +536,17 @@ const ChessBoard = ({ isFlipped = false }: { isFlipped?: boolean }) => {
                             setPieces(simulatedBoard);
                             setPromotionTarget(null);
                             setPromotionSource(null);
+                            console.log("턴무브 보낼게요요요");
+
+                            if (canSendTurn(socket)) {
+                                console.log("턴무브 보낸다잉??");
+                                socket.send(JSON.stringify({
+                                    type: "TURN_MOVE",
+                                    gameId,
+                                    from: promotionSource!,
+                                    to: promotionTarget.position,
+                                }));
+                            }
                             setTurn(nextTurn);
                         }}
                     />

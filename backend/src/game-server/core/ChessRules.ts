@@ -127,7 +127,7 @@ const isCastlingMove = (
             const simulated = board.map(p =>
                 p.position === from ? { ...p, position: square } : p
             );
-            return isKingInCheck(color, simulated);
+            return isKingInCheck(color, simulated)
         });
 
     // 🏰 킹사이드

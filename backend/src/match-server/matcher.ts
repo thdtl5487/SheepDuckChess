@@ -1,8 +1,47 @@
 // 매칭 큐 관리
-import type { WebSocket as WS } from 'ws';
+import { WebSocket } from 'ws';
 import { UserSession } from './types';
 
 const queue: UserSession[] = [];
+
+// 연결이 복구되기 전까지 대기 중인 GAME_START 요청을 담아둘 큐
+const pendingStarts: Array<{ gameId: string }> = [];
+
+// 게임서버와 연결할 WebSocket 클라이언트
+let gameServerSocket: WebSocket;
+let reconnectTimeout: NodeJS.Timeout | null = null;
+
+// 1) 게임 서버에 연결 시도하는 함수 (재귀적으로 재연결)
+function connectGameServer() {
+    gameServerSocket = new WebSocket("ws://localhost:4002");
+
+    gameServerSocket.on("open", () => {
+        console.log("🧠 게임서버 WebSocket 연결 완료!");
+
+        // 연결 복구되면 밀린 START 요청들 모두 전송
+        while (pendingStarts.length > 0) {
+            const { gameId } = pendingStarts.shift()!;
+            console.log("🕓 복구 후 밀린 GAME_START 전송:", gameId);
+            gameServerSocket.send(JSON.stringify({ type: "GAME_START", gameId }));
+        }
+    });
+
+    gameServerSocket.on("error", (err) => {
+        console.error("❌ 게임서버 WebSocket 에러", err);
+        // 에러 나면 소켓 닫고 재연결 스케줄
+        gameServerSocket.close();
+    });
+
+    gameServerSocket.on("close", (code, reason) => {
+        console.warn(`🔌 게임서버 소켓 닫힘 (code=${code}, reason=${reason}). 1초 후 재연결 시도`);
+        // 중복 스케줄링 방지
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        reconnectTimeout = setTimeout(connectGameServer, 1000);
+    });
+}
+
+// 최초 연결 시도
+connectGameServer();
 
 // 큐에 유저 추가
 export function addToQueue(player: UserSession) {
@@ -16,14 +55,14 @@ export function addToQueue(player: UserSession) {
     console.log("------------------");
 }
 
-export function removeToQueue(player: UserSession){
+export function removeToQueue(player: UserSession) {
     console.log(`😇 remove ${player.nick} from queue`)
 
     const index = queue.indexOf(player);
-    if(index !== -1){
+    if (index !== -1) {
         queue.splice(index, 1);
     }
-    
+
     console.log(`curent Queue player : `);
     queue.forEach((p) => {
         console.log(`- ${p.nick}`);
@@ -54,9 +93,13 @@ function startMatchingLoop() {
 
                 const diff = Math.abs(p1.rating - p2.rating);
 
-                // 두 유저의 
                 if (diff <= allowed1 && diff <= allowed2) {
                     // ✅ 매칭!
+
+                    // 큐에서 제거
+                    queue.splice(j, 1);
+                    queue.splice(i, 1);
+
                     const gameId = `match_${now}`;
                     const msg1 = {
                         type: 'MATCH_FOUND',
@@ -80,9 +123,16 @@ function startMatchingLoop() {
                     console.log(`✅ Match made: ${p1.nick}(rating: ${p1.rating}, wait: ${wait1}s, allowed1: ${allowed1}) vs ${p2.nick}(rating: ${p2.rating}, wait: ${wait2}s, allowed2: ${allowed2})`);
 
 
-                    // 큐에서 제거
-                    queue.splice(j, 1);
-                    queue.splice(i, 1);
+                    // 게임 서버에 GAME START 소켓 전송
+                    if (gameServerSocket.readyState === WebSocket.OPEN) {
+                        console.log("❤️❤️❤️❤️❤️게임 생성 메시지 보낸다이~~~");
+                        gameServerSocket.send(JSON.stringify({
+                            type: "GAME_START",
+                            gameId: gameId
+                        }));
+                    }
+
+
                     return; // 한 쌍만 처리하고 다음 tick으로
                 }
             }

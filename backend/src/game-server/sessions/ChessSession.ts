@@ -11,6 +11,7 @@ import {
     isCastlingMove,
 } from "../core/ChessRules";
 import { formatMoveLog } from "../utils/formatMoveLog";
+import * as ws from "ws"; // <- 정확히 이걸로 불러와야 함
 
 export class ChessSession {
     private pieces: Piece[];
@@ -19,6 +20,7 @@ export class ChessSession {
     private logs: string[];
     private enPassantTarget: string | null;
     private result: "ongoing" | "white_win" | "black_win" | "draw";
+    private playerSockets: Map<string, ws.WebSocket> = new Map();
 
     constructor() {
         this.pieces = [...initialBoard];
@@ -27,6 +29,18 @@ export class ChessSession {
         this.moved = {};
         this.enPassantTarget = null;
         this.result = "ongoing";
+    }
+
+    bindSocket(userId: string, socket: ws.WebSocket) {
+        this.playerSockets.set(userId, socket);
+        console.log(`❤️소켓 바인딩 성공 userId : ${userId}`)
+    }
+
+    broadcast(data: any) {
+        const message = JSON.stringify(data);
+        this.playerSockets.forEach((socket) => {
+            socket.send(message);
+        });
     }
 
     getGameState() {
@@ -50,17 +64,22 @@ export class ChessSession {
 
         // 캐슬링
         const castling = isCastlingMove(from, to, piece.type, piece.color, this.pieces, this.moved);
+        console.log("isCastling? : ", castling)
 
         if (castling) {
-            // 캐슬링 처리: 킹 이동
+
+            // 필터링 전 rook 객체 미리 저장장
+            const rook = this.pieces.find(p => p.position === castling.rookFrom);
+
+            // 캐슬링 처리: 킹, 룩 기존 위치에서 제거거
             this.pieces = this.pieces.filter(p =>
                 p.position !== from && p.position !== castling.rookFrom
             );
 
-            const rook = this.pieces.find(p => p.position === castling.rookFrom);
-
+            // 킹 우선 이동
             this.pieces.push({ ...piece, position: to });
 
+            // 룩 이동
             if (rook) {
                 this.pieces.push({ ...rook, position: castling.rookTo });
             }
@@ -80,9 +99,21 @@ export class ChessSession {
                 this.result = "draw";
             }
             this.logs.push(log);
-            this.turn = this.turn === "white" ? "black" : "white";
+            this.turn = nextTurn;
+            this.broadcast({
+                type: "TURN_RESULT",
+                log,
+                board: this.pieces,
+                turn: this.turn,
+                lastMove: {
+                    from: from,
+                    to: to,
+                    pieceType: piece.type
+
+                }
+            });
             return { success: true, log };
-        }
+        }else{
 
         const target = this.pieces.find(p => p.position === to);
         const isCapture = !!target;
@@ -123,7 +154,21 @@ export class ChessSession {
         const draw = isStalemate(nextTurn, board) || isInsufficientMaterial(board);
         const log = formatMoveLog(piece, from, to, board, check, mate);
 
+        console.log("piece : ", piece);
+
         this.logs.push(log);
+
+        this.broadcast({
+            type: "TURN_RESULT",
+            log,
+            board: this.pieces,
+            turn: this.turn === "white" ? "black" : "white",
+            lastMove: {
+                from: from,
+                to: to,
+                pieceType: piece.type
+            }
+        });
 
         if (mate) {
             this.result = this.turn === "white" ? "white_win" : "black_win";
@@ -134,5 +179,6 @@ export class ChessSession {
         this.turn = nextTurn;
 
         return { success: true, log };
+        }
     }
 }
