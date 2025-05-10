@@ -432,7 +432,7 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
 
                 {/* 아래쪽: 알파벳 (파일) */}
                 {[...Array(8)].map((_, i) => {
-                    const file = String.fromCharCode("a".charCodeAt(0) + (isFlipped ? 7 - i : i));
+                    const file = String.fromCharCode("a".charCodeAt(0) + i);
                     return (
                         <div
                             key={`file-${i}`}
