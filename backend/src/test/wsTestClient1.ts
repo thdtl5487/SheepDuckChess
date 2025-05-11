@@ -22,7 +22,6 @@ ws.on('open', () => {
                 boardSkin: 2, character: 4
             },
             maxDiff: 50
-            
         }
     };
 

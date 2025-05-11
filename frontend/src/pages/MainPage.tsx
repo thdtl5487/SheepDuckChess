@@ -29,7 +29,9 @@ const MainPage = (): ReactElement | null => {
         setMatchInfo({           
             gameId: payload.gameId,
             yourColor: payload.yourColor,
-            opponentNick: payload.opponentNick
+            opponentNick: payload.opponentNick,
+            userSkinSetting: payload.userSkinSetting,
+            opponentSkinSetting: payload.opponentSkinSetting,
         });
     });
 

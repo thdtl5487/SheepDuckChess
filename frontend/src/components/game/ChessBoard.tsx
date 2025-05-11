@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Piece } from "../../types/piece";
 import * as ChessRules from "./ChessRules";
+import { useNavigate } from "react-router-dom";
+import IngameAlertModal from "./IngameAlertModal";
+import EmotionOverlay from "../game/EmotionOverlay";
 
 const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
 const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
@@ -24,14 +27,20 @@ const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
 };
 
 // 체스 좌표를 x/y 픽셀 좌표로 변환하는 함수 (isFlipped: 아래가 내 진영인지 여부)
-const positionToCoords = (pos: string, flipped = false) => {
-    const file = pos.charCodeAt(0) - "a".charCodeAt(0);
-    const rank = parseInt(pos[1]) - 1;
+function positionToCoords(pos: string, flipped = false) {
+    const fileIdx = pos.charCodeAt(0) - 97        // 0 ~ 7
+    const rankIdx = parseInt(pos[1]) - 1          // 0 ~ 7
+
+    // coordsToPosition 에 썼던 f, r 와 1:1 역관계
+    const f = flipped ? 7 - fileIdx : fileIdx
+    const r = flipped ? rankIdx : 7 - rankIdx
+
     return {
-        x: file * squareSize,
-        y: flipped ? rank * squareSize : (7 - rank) * squareSize,
-    };
-};
+        x: f * squareSize,
+        y: r * squareSize,
+    }
+}
+
 // 프로모션 선택 모달
 const PromotionModal = ({
     color,
@@ -90,7 +99,28 @@ const PromotionModal = ({
 };
 
 // 체스보드 컴포넌트
-const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: { isFlipped?: boolean, turnResult?: any; myColor: "white" | "black"; gameId: string; socket: WebSocket | null }) => {
+const ChessBoard = ({
+    isFlipped = false,
+    turnResult,
+    myColor,
+    gameId,
+    socket,
+    gameOver,
+    userSkinId,
+    opponentSkinId }:
+    {
+        isFlipped?: boolean,
+        turnResult?: any;
+        myColor: "white" | "black";
+        gameId: string;
+        socket: WebSocket | null
+        gameOver?: {
+            result: 'white_win' | 'black_win' | 'draw';
+            winner?: 'white' | 'black';
+        } | null;
+        userSkinId: any;
+        opponentSkinId: any;
+    }) => {
 
     // 상태 정의 시작 --
     const [pieces, setPieces] = useState<Piece[]>(ChessRules.initialBoard);
@@ -106,7 +136,15 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
 
     // 턴 상태 정의
     const [turn, setTurn] = useState<"white" | "black">("white");
-    // 공통 helper: socket 이 열려 있는지 체크
+
+    // 기타 인스턴스
+    const navigate = useNavigate();
+
+    // 연출용 변수 (애니메이션)
+    const [animatedFrom, setAnimatedFrom] = useState<string | null>(null);
+    const [animatedTo, setAnimatedTo] = useState<string | null>(null);
+    const lastMove = turnResult?.lastMove;
+
     // 공통 helper: socket 이 준비되었는지 검사
     function canSendTurn(socket: WebSocket | null): socket is WebSocket {
         if (!socket) {
@@ -119,8 +157,6 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
         }
         return true;
     }
-
-
 
     // 체크메이트 테스트 코드
     // useEffect(() => {
@@ -147,6 +183,15 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
         setTurn(turnResult.turn);
 
         const last = turnResult?.lastMove;
+        if (turnResult?.lastMove?.to) {
+            setAnimatedFrom(turnResult.lastMove.from);
+            setAnimatedTo(turnResult.lastMove.to);
+        }
+
+        const timer = setTimeout(() => {
+            setAnimatedFrom(null);
+            setAnimatedTo(null);
+        }, (turnResult.lastMove.pieceType === "knight" ? 0.4 : 0.3) * 1000);
 
         if (!last) {
             setEnPassantTarget(null);
@@ -169,10 +214,17 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
         setSelectedPos(null);
         setHighlightSquares([]);
         setCaptureSquares([]);
+
+        return () => clearTimeout(timer);
     }, [turnResult])
 
     const handleSquareClick = (pos: string) => {
         console.log("▶️ handleSquareClick", { pos, myColor, turn, socketState: socket?.readyState });
+
+        if (gameOver) {
+            // 게임 종료 후 클릭 무시
+            return;
+        }
 
         if (myColor !== turn) return; // 💥 상대 턴이면 클릭 무시
 
@@ -445,6 +497,7 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
                 })}
             </div>
 
+            {/* !!! 체스판 렌더 !!! */}
             <div
                 className="relative"
                 style={{ width: squareSize * 8, height: squareSize * 8 }}
@@ -454,10 +507,10 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
                         const drawRank = isFlipped ? rank : 7 - rank;
                         const drawFile = file;
                         const isDark = (drawRank + drawFile) % 2 === 1;
-                        const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
-                        const rankChar = (drawRank + 1).toString();
-                        const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
-                        // const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
+                        // const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
+                        // const rankChar = (drawRank + 1).toString();
+                        // const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
+                        const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
                         const isSelected = pos === selectedPos;
                         const isHighlighted = highlightSquares.includes(pos);
                         const isCapture = captureSquares.includes(pos);
@@ -466,18 +519,12 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
                             <div
                                 key={`${file}-${rank}`}
                                 onClick={() => {
-                                    // 앙파상 테스트를 위해 클릭 위치 및 선택 기물 정보 출력
-                                    console.log("클릭한 위치:", pos);
-                                    console.log("선택된 기물:", selectedPos);
                                     handleSquareClick(pos);
                                 }}
-                                className={`absolute w-[60px] h-[60px] cursor-pointer border ${isDark ? "bg-green-700" : "bg-green-200"} ${isSelected
-                                    ? "border-yellow-400"
-                                    : isCapture
-                                        ? "border-red-500 border-2"
-                                        : isHighlighted
-                                            ? "border-blue-400 border-2"
-                                            : "border-transparent"
+                                className={`absolute w-[60px] h-[60px] cursor-pointer border 
+                                    ${isDark ? "bg-green-700" : "bg-green-200"} 
+                                    ${isSelected ? "border-yellow-400"
+                                        : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
                                     }`}
                                 style={{
                                     top: rank * squareSize,
@@ -490,26 +537,60 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
 
                 {/* 기물 렌더링 */}
                 {pieces.map((piece, i) => {
+                    const toCoords = positionToCoords(piece.position, isFlipped);
+                    const fromCoords = animatedFrom
+                        ? positionToCoords(animatedFrom, isFlipped)
+                        : toCoords;
                     const { x, y } = positionToCoords(piece.position, isFlipped);
                     const isKnight = piece.type === "knight";
+                    const isMovedPiece = animatedTo === piece.position;
+                    const duration = isMovedPiece ? (isKnight ? 0.4 : 0.3) : 0;
 
-                    return (
-                        <motion.div
-                            key={i}
-                            initial={false}
-                            animate={{ x, y }}
-                            transition={{
-                                type: isKnight ? "spring" : "tween",
-                                duration: isKnight ? 0.4 : 0.3,
-                                ease: "easeInOut",
-                            }}
-                            className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl ${piece.color === "black" ? "text-black" : "text-white"}`}
-                            style={{ pointerEvents: "none" }}
-                        >
-                            {pieceIcons[piece.color][piece.type]}
-                        </motion.div>
-                    );
+                    return isMovedPiece
+                        ? (
+                            <motion.div
+                                key={piece.position}
+                                initial={{ x: fromCoords.x, y: fromCoords.y }}
+                                animate={{ x: toCoords.x, y: toCoords.y }}
+                                transition={{ type: isKnight ? "spring" : "tween", duration }}
+                                className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                style={{ pointerEvents: "none" }}
+                            >
+                                {pieceIcons[piece.color][piece.type]}
+                            </motion.div>
+                        ) : (
+                            <div
+                                key={i}
+                                className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                style={{ left: x, top: y, pointerEvents: "none" }}
+                            >
+                                {pieceIcons[piece.color][piece.type]}
+                            </div>
+                        );
                 })}
+
+                {/*게임 종료 모달*/}
+                <>
+                    <IngameAlertModal
+                        isOpen={!!gameOver}
+                        title={
+                            gameOver?.result === 'draw'
+                                ? '무승부!'
+                                : gameOver?.winner === myColor
+                                    ? '승리!'
+                                    : '패배…'
+                        }
+                        message={
+                            gameOver?.result === 'draw'
+                                ? '두 플레이어가 무승부를 기록했습니다.'
+                                : gameOver?.winner === myColor
+                                    ? '축하합니다! 승리하셨습니다.'
+                                    : '아쉽지만 다음 기회를 노려보세요.'
+                        }
+                        confirmText="로비로"
+                        onConfirm={() => navigate('/main')}
+                    />
+                </>
 
                 {/* 프로모션 모달 */}
                 {promotionTarget && (
@@ -551,6 +632,24 @@ const ChessBoard = ({ isFlipped = false, turnResult, myColor, gameId, socket }: 
                         }}
                     />
                 )}
+
+
+                {/** ———————————— 감정 연출 ———————————— **/}
+                {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
+                <EmotionOverlay
+                    pieces={pieces}
+                    characterColor={myColor === "white" ? "black" : "white"}
+                    skinId={opponentSkinId}
+                    side="right"
+                />
+                {/* 내 쪽(우측)에 내 감정 */}
+                <EmotionOverlay
+                    pieces={pieces}
+                    characterColor={myColor}
+                    skinId={userSkinId}
+                    side="left"
+                />
+
             </div>
         </div>
     );

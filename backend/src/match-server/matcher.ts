@@ -106,7 +106,9 @@ function startMatchingLoop() {
                         payload: {
                             gameId,
                             yourColor: 'white',
-                            opponentNick: p2.nick
+                            opponentNick: p2.nick,
+                            userSkinSetting: p1.skinSetting,
+                            opponentSkinInfo: p2.skinSetting
                         }
                     };
                     const msg2 = {
@@ -114,7 +116,9 @@ function startMatchingLoop() {
                         payload: {
                             gameId,
                             yourColor: 'black',
-                            opponentNick: p1.nick
+                            opponentNick: p1.nick,
+                            userSkinSetting: p2.skinSetting,
+                            opponentSkinInfo: p1.skinSetting
                         }
                     };
 

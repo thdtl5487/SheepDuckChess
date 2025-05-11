@@ -1,11 +1,14 @@
 import { useEffect, useRef } from "react";
 import { User } from "../types/user";
+import { SkinSetting } from "../types/matchInfo";
 
 // 매칭이 성사되었을 때 전달되는 payload 타입 정의
-type MatchFoundPayload = {
+export type MatchFoundPayload = {
     gameId: string;
     yourColor: "white" | "black";
     opponentNick: string;
+    userSkinSetting: SkinSetting;         // 내 스킨
+    opponentSkinSetting : SkinSetting;    // 상대 스킨
     user?: User;
     triggerQueue?: boolean;
 };
@@ -57,13 +60,25 @@ export function useMatchSocket(
         // 서버로부터 메시지 수신
         socket.onmessage = (e) => {
             const msg = JSON.parse(e.data);
-
             if (msg.type === "MATCH_FOUND") {
-                // 매칭 성공 시 콜백 실행
-                onMatched(msg.payload);
+                const {
+                    gameId,
+                    yourColor,
+                    opponentNick,
+                    userSkinSetting: userSkinSetting,
+                    opponentSkinSetting : opponentSkinSetting
+                } = msg.payload as MatchFoundPayload;
+
+                // recoil에 저장할 형태로 변환해서 콜백 호출
+                onMatched({
+                    gameId,
+                    yourColor,
+                    opponentNick,
+                    userSkinSetting: userSkinSetting,
+                    opponentSkinSetting : opponentSkinSetting
+                });
             }
         };
-
         // 언마운트 또는 재접속 시 소켓 종료
         return () => {
             socket.close();

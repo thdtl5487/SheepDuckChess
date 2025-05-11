@@ -2,9 +2,9 @@ import { Piece } from "../../types/piece";
 
 
 const coordsToPosition = (file: number, rank: number, flipped = false): string => {
-    const f = flipped ? 7 - file : file;
-    const r = flipped ? rank + 1 : 8 - rank;
-    return String.fromCharCode("a".charCodeAt(0) + f) + r.toString();
+    const f = flipped ? 7 - file : file
+    const r = flipped ? rank : 7 - rank
+    return String.fromCharCode(97 + f) + String(r + 1)
 };
 
 // 초기 체스 기물 전체 배치
