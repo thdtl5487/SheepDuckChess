@@ -42,18 +42,18 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
 
   // 위치 스타일
   const positionClass = side === 'left'
-    ? 'absolute bottom-4 left-4'
-    : 'absolute bottom-4 right-4';
+    ? 'absolute top-1/2 left-5 transform -translate-y-1/2'
+    : 'absolute top-1/2 right-5 transform -translate-y-1/2';
 
   // 상대측인 경우 좌우 반전
-  const flipClass = side === 'left' ? 'transform -scale-x-100' : '';
+  const flipClass = side === 'right' ? 'transform -scale-x-100' : '';
 
   return (
     <div className={`${positionClass} pointer-events-none`}>
       <img
         src={imgSrc}
         alt={`emotion-${stateNum}`}
-        className={`w-24 h-24 ${flipClass}`}
+        className={`w-60 h-60 ${flipClass}`}
       />
     </div>
   );

@@ -464,197 +464,197 @@ const ChessBoard = ({
     };
 
     return (
-        <div className="relative">
-            {/* 좌표 표시 */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                {/* 왼쪽: 숫자 (랭크) */}
-                {[...Array(8)].map((_, i) => {
-                    const rank = isFlipped ? i + 1 : 8 - i;
-                    return (
-                        <div
-                            key={`rank-${i}`}
-                            className="absolute left-[-20px] text-xs text-white"
-                            style={{ top: i * squareSize + 20 }}
-                        >
-                            {rank}
-                        </div>
-                    );
-                })}
+        <>
+            <div className="relative">
+                {/* 좌표 표시 */}
+                <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                    {/* 왼쪽: 숫자 (랭크) */}
+                    {[...Array(8)].map((_, i) => {
+                        const rank = isFlipped ? i + 1 : 8 - i;
+                        return (
+                            <div
+                                key={`rank-${i}`}
+                                className="absolute left-[-20px] text-xs text-white"
+                                style={{ top: i * squareSize + 20 }}
+                            >
+                                {rank}
+                            </div>
+                        );
+                    })}
 
-                {/* 아래쪽: 알파벳 (파일) */}
-                {[...Array(8)].map((_, i) => {
-                    const fileIdx = isFlipped ? 7 - i : i;
-                    const file = String.fromCharCode("a".charCodeAt(0) + fileIdx);
-
-                    return (
-                        <div
-                            key={`file-${i}`}
-                            className="absolute bottom-[-18px] text-xs text-white"
-                            style={{ left: i * squareSize + 20 }}
-                        >
-                            {file}
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* !!! 체스판 렌더 !!! */}
-            <div
-                className="relative"
-                style={{ width: squareSize * 8, height: squareSize * 8 }}
-            >
-                {[...Array(8)].map((_, rank) =>
-                    [...Array(8)].map((_, file) => {
-                        const drawRank = isFlipped ? rank : 7 - rank;
-                        // const drawFile = isFlipped ? 7 - file : file;
-                        const drawFile = file;
-                        const isDark = (drawRank + drawFile) % 2 === 1;
-                        // const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
-                        // const rankChar = (drawRank + 1).toString();
-                        // const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
-                        const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
-                        // const pos = String.fromCharCode(97 + drawFile) + (drawRank + 1);
-                        const isSelected = pos === selectedPos;
-                        const isHighlighted = highlightSquares.includes(pos);
-                        const isCapture = captureSquares.includes(pos);
+                    {/* 아래쪽: 알파벳 (파일) */}
+                    {[...Array(8)].map((_, i) => {
+                        const fileIdx = isFlipped ? 7 - i : i;
+                        const file = String.fromCharCode("a".charCodeAt(0) + fileIdx);
 
                         return (
                             <div
-                                key={`${file}-${rank}`}
-                                onClick={() => {
-                                    handleSquareClick(pos);
-                                }}
-                                className={`absolute w-[60px] h-[60px] cursor-pointer border 
-                                    ${isDark ? "bg-green-700" : "bg-green-200"} 
-                                    ${isSelected ? "border-yellow-400"
-                                        : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
-                                    }`}
-                                style={{
-                                    top: rank * squareSize,
-                                    left: drawFile * squareSize,
-                                }}
-                            />
-                        );
-                    })
-                )}
-
-                {/* 기물 렌더링 */}
-                {pieces.map((piece, i) => {
-                    const toCoords = positionToCoords(piece.position, isFlipped);
-                    const fromCoords = animatedFrom
-                        ? positionToCoords(animatedFrom, isFlipped)
-                        : toCoords;
-                    const { x, y } = positionToCoords(piece.position, isFlipped);
-                    const isKnight = piece.type === "knight";
-                    const isMovedPiece = animatedTo === piece.position;
-                    const duration = isMovedPiece ? (isKnight ? 0.4 : 0.3) : 0;
-
-                    return isMovedPiece
-                        ? (
-                            <motion.div
-                                key={piece.position}
-                                initial={{ x: fromCoords.x, y: fromCoords.y }}
-                                animate={{ x: toCoords.x, y: toCoords.y }}
-                                transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                style={{ pointerEvents: "none" }}
+                                key={`file-${i}`}
+                                className="absolute bottom-[-18px] text-xs text-white"
+                                style={{ left: i * squareSize + 20 }}
                             >
-                                {pieceIcons[piece.color][piece.type]}
-                            </motion.div>
-                        ) : (
-                            <div
-                                key={i}
-                                className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                style={{ left: x, top: y, pointerEvents: "none" }}
-                            >
-                                {pieceIcons[piece.color][piece.type]}
+                                {file}
                             </div>
                         );
-                })}
+                    })}
+                </div>
 
-                {/*게임 종료 모달*/}
-                <>
-                    <IngameAlertModal
-                        isOpen={!!gameOver}
-                        title={
-                            gameOver?.result === 'draw'
-                                ? '무승부!'
-                                : gameOver?.winner === myColor
-                                    ? '승리!'
-                                    : '패배…'
-                        }
-                        message={
-                            gameOver?.result === 'draw'
-                                ? '두 플레이어가 무승부를 기록했습니다.'
-                                : gameOver?.winner === myColor
-                                    ? '축하합니다! 승리하셨습니다.'
-                                    : '아쉽지만 다음 기회를 노려보세요.'
-                        }
-                        confirmText="로비로"
-                        onConfirm={() => navigate('/main')}
-                    />
-                </>
+                {/* !!! 체스판 렌더 !!! */}
+                <div
+                    className="relative"
+                    style={{ width: squareSize * 8, height: squareSize * 8 }}
+                >
+                    {[...Array(8)].map((_, rank) =>
+                        [...Array(8)].map((_, file) => {
+                            const drawRank = isFlipped ? rank : 7 - rank;
+                            // const drawFile = isFlipped ? 7 - file : file;
+                            const drawFile = file;
+                            const isDark = (drawRank + drawFile) % 2 === 1;
+                            // const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
+                            // const rankChar = (drawRank + 1).toString();
+                            // const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
+                            const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
+                            // const pos = String.fromCharCode(97 + drawFile) + (drawRank + 1);
+                            const isSelected = pos === selectedPos;
+                            const isHighlighted = highlightSquares.includes(pos);
+                            const isCapture = captureSquares.includes(pos);
 
-                {/* 프로모션 모달 */}
-                {promotionTarget && (
-                    <PromotionModal
-                        color={promotionTarget.color}
-                        onSelect={(type) => {
-                            const promoted = ChessRules.promote(promotionTarget, type);
-                            const nextTurn = promotionTarget.color === "white" ? "black" : "white";
+                            return (
+                                <div
+                                    key={`${file}-${rank}`}
+                                    onClick={() => {
+                                        handleSquareClick(pos);
+                                    }}
+                                    className={`absolute w-[60px] h-[60px] cursor-pointer border 
+                                    ${isDark ? "bg-green-700" : "bg-green-200"} 
+                                    ${isSelected ? "border-yellow-400"
+                                            : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
+                                        }`}
+                                    style={{
+                                        top: rank * squareSize,
+                                        left: drawFile * squareSize,
+                                    }}
+                                />
+                            );
+                        })
+                    )}
 
-                            const simulatedBoard = pieces
-                                .filter(p => ![promotionTarget.position, promotionSource].includes(p.position))
-                                .concat(promoted);
+                    {/* 기물 렌더링 */}
+                    {pieces.map((piece, i) => {
+                        const toCoords = positionToCoords(piece.position, isFlipped);
+                        const fromCoords = animatedFrom
+                            ? positionToCoords(animatedFrom, isFlipped)
+                            : toCoords;
+                        const { x, y } = positionToCoords(piece.position, isFlipped);
+                        const isKnight = piece.type === "knight";
+                        const isMovedPiece = animatedTo === piece.position;
+                        const duration = isMovedPiece ? (isKnight ? 0.4 : 0.3) : 0;
 
-                            if (ChessRules.isKingInCheck(nextTurn, simulatedBoard)) {
-                                console.log("🟥 프로모션 체크입니다!");
+                        return isMovedPiece
+                            ? (
+                                <motion.div
+                                    key={piece.position}
+                                    initial={{ x: fromCoords.x, y: fromCoords.y }}
+                                    animate={{ x: toCoords.x, y: toCoords.y }}
+                                    transition={{ type: isKnight ? "spring" : "tween", duration }}
+                                    className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    style={{ pointerEvents: "none" }}
+                                >
+                                    {pieceIcons[piece.color][piece.type]}
+                                </motion.div>
+                            ) : (
+                                <div
+                                    key={i}
+                                    className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    style={{ left: x, top: y, pointerEvents: "none" }}
+                                >
+                                    {pieceIcons[piece.color][piece.type]}
+                                </div>
+                            );
+                    })}
+
+                    {/*게임 종료 모달*/}
+                    <>
+                        <IngameAlertModal
+                            isOpen={!!gameOver}
+                            title={
+                                gameOver?.result === 'draw'
+                                    ? '무승부!'
+                                    : gameOver?.winner === myColor
+                                        ? '승리!'
+                                        : '패배…'
                             }
-                            if (ChessRules.isCheckmate(nextTurn, simulatedBoard)) {
-                                console.log("🏁 프로모션 체크메이트입니다!");
+                            message={
+                                gameOver?.result === 'draw'
+                                    ? '두 플레이어가 무승부를 기록했습니다.'
+                                    : gameOver?.winner === myColor
+                                        ? '축하합니다! 승리하셨습니다.'
+                                        : '아쉽지만 다음 기회를 노려보세요.'
                             }
-                            if (ChessRules.isStalemate(nextTurn, simulatedBoard)) {
-                                console.log("🤝 프로모션 스테일메이트입니다 (무승부)");
-                            }
+                            confirmText="로비로"
+                            onConfirm={() => navigate('/main')}
+                        />
+                    </>
 
-                            setPieces(simulatedBoard);
-                            setPromotionTarget(null);
-                            setPromotionSource(null);
-                            console.log("턴무브 보낼게요요요");
+                    {/* 프로모션 모달 */}
+                    {promotionTarget && (
+                        <PromotionModal
+                            color={promotionTarget.color}
+                            onSelect={(type) => {
+                                const promoted = ChessRules.promote(promotionTarget, type);
+                                const nextTurn = promotionTarget.color === "white" ? "black" : "white";
 
-                            if (canSendTurn(socket)) {
-                                console.log("턴무브 보낸다잉??");
-                                socket.send(JSON.stringify({
-                                    type: "TURN_MOVE",
-                                    gameId,
-                                    from: promotionSource!,
-                                    to: promotionTarget.position,
-                                }));
-                            }
-                            setTurn(nextTurn);
-                        }}
-                    />
-                )}
+                                const simulatedBoard = pieces
+                                    .filter(p => ![promotionTarget.position, promotionSource].includes(p.position))
+                                    .concat(promoted);
 
+                                if (ChessRules.isKingInCheck(nextTurn, simulatedBoard)) {
+                                    console.log("🟥 프로모션 체크입니다!");
+                                }
+                                if (ChessRules.isCheckmate(nextTurn, simulatedBoard)) {
+                                    console.log("🏁 프로모션 체크메이트입니다!");
+                                }
+                                if (ChessRules.isStalemate(nextTurn, simulatedBoard)) {
+                                    console.log("🤝 프로모션 스테일메이트입니다 (무승부)");
+                                }
 
-                {/** ———————————— 감정 연출 ———————————— **/}
-                {/* 내 쪽(우측)에 내 감정 */}
-                <EmotionOverlay
-                    pieces={pieces}
-                    characterColor={myColor}
-                    skinId={userSkinId}
-                    side="right"
-                />
-                {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
-                <EmotionOverlay
-                    pieces={pieces}
-                    characterColor={myColor === "white" ? "black" : "white"}
-                    skinId={opponentSkinId}
-                    side="left"
-                />
+                                setPieces(simulatedBoard);
+                                setPromotionTarget(null);
+                                setPromotionSource(null);
+                                console.log("턴무브 보낼게요요요");
 
+                                if (canSendTurn(socket)) {
+                                    console.log("턴무브 보낸다잉??");
+                                    socket.send(JSON.stringify({
+                                        type: "TURN_MOVE",
+                                        gameId,
+                                        from: promotionSource!,
+                                        to: promotionTarget.position,
+                                    }));
+                                }
+                                setTurn(nextTurn);
+                            }}
+                        />
+                    )}
+                </div>
             </div>
-        </div>
+
+            {/** ———————————— 감정 연출 ———————————— **/}
+            {/* 내 쪽(우측)에 내 감정 */}
+            <EmotionOverlay
+                pieces={pieces}
+                characterColor={myColor}
+                skinId={userSkinId}
+                side="left"
+            />
+            {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
+            <EmotionOverlay
+                pieces={pieces}
+                characterColor={myColor === "white" ? "black" : "white"}
+                skinId={opponentSkinId}
+                side="right"
+            />
+        </>
     );
 
 };
