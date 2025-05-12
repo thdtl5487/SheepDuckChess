@@ -20,6 +20,8 @@ const GamePage = () => {
     // Recoil state
     const [user, setUser] = useRecoilState(userAtom);
     const matchInfo = useRecoilValue(matchInfoAtom);
+
+    console.log("matchInfo : ", matchInfo);
     // 매치 완료 후 리코일에 저장
     useMatchSocket(
         user!,
@@ -33,6 +35,8 @@ const GamePage = () => {
                 userSkinSetting: userSkinSetting,
                 opponentSkinSetting: opponentSkinSetting
             } = payload;
+
+            console.log("payload : ", payload);
 
             setMatchInfo({
                 gameId: gId,
@@ -68,6 +72,7 @@ const GamePage = () => {
             .then(res => {
                 setUser(res.data);
                 console.log("✅ user 복구됨", res.data);
+                // setTriggerQueue(true);
             })
             .catch(err => {
                 console.error("❌ user 복구 실패", err);
@@ -160,7 +165,7 @@ const GamePage = () => {
 
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center">
-                <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} />
+                <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting.character_id} opponentSkinId={matchInfo?.opponentSkinSetting.character_id} />
                 <OverlayEffects />
             </div>
 

@@ -38,7 +38,7 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
   const stateNum = getStateNum(diff);
 
   // 파일명 포맷: {skinId}_{stateNum}.gif
-  const imgSrc = `/assets/characters/${skinId}_${stateNum}.gif`;
+  const imgSrc = `/asset/InGameStandImage/${skinId}_${stateNum}.gif`;
 
   // 위치 스타일
   const positionClass = side === 'left'

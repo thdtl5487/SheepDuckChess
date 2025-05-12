@@ -100,15 +100,17 @@ function startMatchingLoop() {
                     queue.splice(j, 1);
                     queue.splice(i, 1);
 
+                    console.log("p2.skinSetting : ", p2.skinSetting);
+
                     const gameId = `match_${now}`;
                     const msg1 = {
                         type: 'MATCH_FOUND',
                         payload: {
                             gameId,
                             yourColor: 'white',
-                            opponentNick: p2.nick,
+                            opponentNick: p2.nick + '123',
                             userSkinSetting: p1.skinSetting,
-                            opponentSkinInfo: p2.skinSetting
+                            opponentSkinSetting: p2.skinSetting
                         }
                     };
                     const msg2 = {
@@ -118,7 +120,7 @@ function startMatchingLoop() {
                             yourColor: 'black',
                             opponentNick: p1.nick,
                             userSkinSetting: p2.skinSetting,
-                            opponentSkinInfo: p1.skinSetting
+                            opponentSkinSetting: p1.skinSetting
                         }
                     };
 

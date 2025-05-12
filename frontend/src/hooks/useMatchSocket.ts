@@ -36,6 +36,7 @@ export function useMatchSocket(
 
         // 연결되었을 때 JOIN_QUEUE 전송
         socket.onopen = () => {
+            console.log("조인큐 실행!!");
             socket.send(JSON.stringify({
                 type: "JOIN_QUEUE",
                 payload: {
