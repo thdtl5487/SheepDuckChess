@@ -4,7 +4,7 @@ import { useRecoilState } from "recoil";
 import { userState } from "../store/userState";
 import { ReactElement } from "react";
 import LogoutButton from "../components/btn_logout";
-import api from "../api/axiosInstance";
+import { api } from "../utills/api";
 import { useMatchSocket } from "../hooks/useMatchSocket";
 import MatchOverlay from "../components/MatchOverlay";
 import { useSetRecoilState } from "recoil";

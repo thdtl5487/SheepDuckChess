@@ -6,7 +6,7 @@ import { userState } from "../store/userState";
 import { userInfo } from "os";
 import { User } from "../types/user";
 import { useEffect } from 'react';
-import api from "../api/axiosInstance";
+import { api } from "../utills/api";
 
 export default function LoginPage() {
   const [loginId, setLoginId] = useState("");

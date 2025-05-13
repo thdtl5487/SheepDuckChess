@@ -6,9 +6,12 @@ import { ChessBoard } from "../components/game/ChessBoard";
 import PlayerPanel from "../components/game/PlayerPanel";
 import GameLog from "../components/game/GameLog";
 import OverlayEffects from "../components/game/OverlayEffects";
-import api from "../api/axiosInstance";
+import { api } from "../utills/api";
 import { matchInfoAtom, MatchInfo } from "../types/matchInfo";
 import { useMatchSocket, MatchFoundPayload } from "../hooks/useMatchSocket";
+import { gameURL } from "../utills/api";
+
+const gameServerURL = gameURL;
 
 let globalWsInitialized = false;
 
@@ -86,7 +89,7 @@ const GamePage = () => {
         globalWsInitialized = true; // ← 이 라인으로 이후 재실행 차단
 
         console.log("🔥 WebSocket 연결 시도");
-        const ws = new WebSocket("ws://localhost:4002");
+        const ws = new WebSocket(gameServerURL);
         setSocket(ws);
 
         ws.onopen = () => {

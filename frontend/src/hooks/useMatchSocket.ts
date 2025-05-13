@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { User } from "../types/user";
 import { SkinSetting } from "../types/matchInfo";
+import { matchURL } from "../utills/api";
+
+const matchServerURL = matchURL;
 
 // 매칭이 성사되었을 때 전달되는 payload 타입 정의
 export type MatchFoundPayload = {
@@ -31,7 +34,8 @@ export function useMatchSocket(
         if (!triggerQueue) return;
 
         // 소켓 연결
-        const socket = new WebSocket("ws://localhost:4001"); // match-server 주소
+        
+        const socket = new WebSocket(matchServerURL); // match-server 주소
         socketRef.current = socket;
 
         // 연결되었을 때 JOIN_QUEUE 전송

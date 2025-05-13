@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axiosInstance";
+import { api } from "../utills/api";
 
 export default function SignUpPage() {
   const [loginId, setLoginId] = useState("");
