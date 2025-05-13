@@ -128,32 +128,6 @@ const GamePage = () => {
             console.warn("🔌 WebSocket 닫힘", e);
         };
 
-        // 매치 완료 후 리코일에 저장
-        // useMatchSocket(
-        //     user!,
-        //     triggerQueue,
-        //     (payload: MatchFoundPayload) => {
-        //         // MATCH_FOUND 콜백
-        //         const {
-        //             gameId: gId,
-        //             yourColor,
-        //             opponentNick,
-        //             userSkinSetting: userSkinSetting,
-        //             opponentSkinSetting: opponentSkinSetting
-        //         } = payload;
-
-        //         setMatchInfo({
-        //             gameId: gId,
-        //             yourColor,
-        //             opponentNick,
-        //             userSkinSetting,
-        //             opponentSkinSetting: opponentSkinSetting
-        //         });
-
-        //         navigate(`/game/${gId}`);
-        //     }
-        // );
-
         // 언마운트나 deps 변경 시 소켓 정리
         return () => {
             console.log("🧹 WebSocket 정리");

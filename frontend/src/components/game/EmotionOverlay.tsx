@@ -14,11 +14,11 @@ interface EmotionOverlayProps {
 
 // material 점수 차에 따라 상태 번호 결정 (1~5)
 function getStateNum(diff: number): number {
-  if (diff <= -8) return 1;
-  if (diff <= -4) return 2;
-  if (Math.abs(diff) <= 2) return 3;
-  if (diff >= 4) return 4;
-  if (diff >= 8) return 5;
+  if (diff <= -2) return 1;
+  if (diff <= -1) return 2;
+  if (Math.abs(diff) <= 0) return 3;
+  if (diff >= 1) return 4;
+  if (diff >= 2) return 5;
   return 3;
 }
 
@@ -42,14 +42,18 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
 
   // 위치 스타일
   const positionClass = side === 'left'
-    ? 'absolute top-1/2 left-5 transform -translate-y-1/2'
-    : 'absolute top-1/2 right-5 transform -translate-y-1/2';
+      ? 'fixed max-md:bottom-[-50px] max-md:bottom-0 max-md:right-10 max-md:-translate-x-1/2 ' +
+        'md:bottom-4 md:left-4 md:transform-none md:top-auto'
+      : 'fixed max-md:top-4 max-md:right-0 max-md:-translate-x-1/2 ' +
+        'md:bottom-4 md:right-4 md:transform-none md:left-auto'
+
+
 
   // 상대측인 경우 좌우 반전
   const flipClass = side === 'right' ? 'transform -scale-x-100' : '';
 
   return (
-    <div className={`${positionClass} pointer-events-none`}>
+    <div className={`${positionClass} pointer-events-none z-0`}>
       <img
         src={imgSrc}
         alt={`emotion-${stateNum}`}

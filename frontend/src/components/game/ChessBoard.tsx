@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion } from "framer-motion";
 import { Piece } from "../../types/piece";
 import * as ChessRules from "./ChessRules";
@@ -6,15 +6,15 @@ import { useNavigate } from "react-router-dom";
 import IngameAlertModal from "./IngameAlertModal";
 import EmotionOverlay from "../game/EmotionOverlay";
 
-const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
+// const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
 const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
     white: {
-        king: "♔",
-        queen: "♕",
-        rook: "♖",
-        bishop: "♗",
-        knight: "♘",
-        pawn: "♙",
+        king: "♚",
+        queen: "♛",
+        rook: "♜",
+        bishop: "♝",
+        knight: "♞",
+        pawn: "♟",
     },
     black: {
         king: "♚",
@@ -25,20 +25,6 @@ const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
         pawn: "♟",
     },
 };
-
-// 체스 좌표를 x/y 픽셀 좌표로 변환하는 함수 (isFlipped: 아래가 내 진영인지 여부)
-function positionToCoords(pos: string, flipped = false) {
-    const fileIdx = pos.charCodeAt(0) - 97        // 0 ~ 7
-    const rankIdx = parseInt(pos[1]) - 1          // 0 ~ 7
-
-    const f = flipped ? 7 - fileIdx : fileIdx;
-    const r = flipped ? rankIdx : 7 - rankIdx;
-
-    return {
-        x: f * squareSize,
-        y: r * squareSize,
-    }
-}
 
 // 프로모션 선택 모달
 const PromotionModal = ({
@@ -142,7 +128,35 @@ const ChessBoard = ({
     // 연출용 변수 (애니메이션)
     const [animatedFrom, setAnimatedFrom] = useState<string | null>(null);
     const [animatedTo, setAnimatedTo] = useState<string | null>(null);
-    const lastMove = turnResult?.lastMove;
+
+    const boardRef = useRef<HTMLDivElement>(null);
+    const [squareSize, setSquareSize] = useState(60);
+
+    useLayoutEffect(() => {
+        function updateSize() {
+            if (boardRef.current) {
+                const w = boardRef.current.clientWidth;
+                setSquareSize(w / 8);
+            }
+        }
+        updateSize();
+        window.addEventListener("resize", updateSize);
+        return () => window.removeEventListener("resize", updateSize);
+    }, []);
+
+    // 체스 좌표를 x/y 픽셀 좌표로 변환하는 함수 (isFlipped: 아래가 내 진영인지 여부)
+    function positionToCoords(pos: string, flipped = false) {
+        const fileIdx = pos.charCodeAt(0) - 97        // 0 ~ 7
+        const rankIdx = parseInt(pos[1]) - 1          // 0 ~ 7
+
+        const f = flipped ? 7 - fileIdx : fileIdx;
+        const r = flipped ? rankIdx : 7 - rankIdx;
+
+        return {
+            x: f * squareSize,
+            y: r * squareSize,
+        }
+    }
 
     // 공통 helper: socket 이 준비되었는지 검사
     function canSendTurn(socket: WebSocket | null): socket is WebSocket {
@@ -465,7 +479,7 @@ const ChessBoard = ({
 
     return (
         <>
-            <div className="relative">
+            <div className="relative z-20">
                 {/* 좌표 표시 */}
                 <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                     {/* 왼쪽: 숫자 (랭크) */}
@@ -501,23 +515,19 @@ const ChessBoard = ({
 
                 {/* !!! 체스판 렌더 !!! */}
                 <div
-                    className="relative"
-                    style={{ width: squareSize * 8, height: squareSize * 8 }}
+                    ref={boardRef}
+                    className="relative mx-auto w-[90vmin] h-[90vmin] max-w-full max-h-full aspect-square"
                 >
                     {[...Array(8)].map((_, rank) =>
                         [...Array(8)].map((_, file) => {
                             const drawRank = isFlipped ? rank : 7 - rank;
-                            // const drawFile = isFlipped ? 7 - file : file;
                             const drawFile = file;
                             const isDark = (drawRank + drawFile) % 2 === 1;
-                            // const fileChar = String.fromCharCode("a".charCodeAt(0) + drawFile);
-                            // const rankChar = (drawRank + 1).toString();
-                            // const pos = `${fileChar}${rankChar}`;  // 예: drawFile=1, drawRank=1 → "b2"
                             const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
-                            // const pos = String.fromCharCode(97 + drawFile) + (drawRank + 1);
                             const isSelected = pos === selectedPos;
                             const isHighlighted = highlightSquares.includes(pos);
                             const isCapture = captureSquares.includes(pos);
+                            console.log("squareSize: ", squareSize);
 
                             return (
                                 <div

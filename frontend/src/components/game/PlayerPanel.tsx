@@ -15,25 +15,11 @@ const PlayerPanel = ({ side, nick, rating, characterId, isYourTurn }: PlayerPane
         <div
             className={`flex items-center gap-4 p-4 w-full md:w-1/2 ${isYou ? "justify-start" : "justify-end"}`}
         >
-            {!isYou && (
-                <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center">
-                    {/* 캐릭터 이미지 자리 */}
-                    <span className="text-sm">{characterId ?? "?"}</span>
-                </div>
-            )}
-
             <div className="text-left">
                 <div className="font-bold text-lg">{nick ?? (isYou ? "You" : "Opponent")}</div>
                 <div className="text-sm text-gray-400">{rating ? `Rating: ${rating}` : "Unrated"}</div>
                 {isYourTurn && <div className="text-green-400 text-xs mt-1">Your turn</div>}
             </div>
-
-            {isYou && (
-                <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center">
-                    {/* 캐릭터 이미지 자리 */}
-                    <span className="text-sm">{characterId ?? "?"}</span>
-                </div>
-            )}
         </div>
     );
 };
