@@ -479,16 +479,16 @@ const ChessBoard = ({
 
     return (
         <>
-            <div className="relative z-20">
+            <div className="relative z-20 max-w-full max-h-full w-full h-full">
                 {/* 좌표 표시 */}
-                <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                <div className="absolute top-0 left-0 w-full h-full pointer-events-none hidden md:block coordinate_container">
                     {/* 왼쪽: 숫자 (랭크) */}
                     {[...Array(8)].map((_, i) => {
                         const rank = isFlipped ? i + 1 : 8 - i;
                         return (
                             <div
                                 key={`rank-${i}`}
-                                className="absolute left-[-20px] text-xs text-white"
+                                className="absolute left-[-20px] text-xs text-white coordinate_rank"
                                 style={{ top: i * squareSize + 20 }}
                             >
                                 {rank}
@@ -504,7 +504,7 @@ const ChessBoard = ({
                         return (
                             <div
                                 key={`file-${i}`}
-                                className="absolute bottom-[-18px] text-xs text-white"
+                                className="absolute bottom-[-18px] text-xs text-white coordinate_file"
                                 style={{ left: i * squareSize + 20 }}
                             >
                                 {file}
@@ -516,7 +516,8 @@ const ChessBoard = ({
                 {/* !!! 체스판 렌더 !!! */}
                 <div
                     ref={boardRef}
-                    className="relative mx-auto w-[90vmin] h-[90vmin] max-w-full max-h-full aspect-square"
+                    className="chessboard relative mx-auto w-full mx-0 md:w-[90vmin] md:mx-auto max-w-fullaspect-square"
+                    style={{ backgroundColor: "red" }}
                 >
                     {[...Array(8)].map((_, rank) =>
                         [...Array(8)].map((_, file) => {
@@ -527,7 +528,15 @@ const ChessBoard = ({
                             const isSelected = pos === selectedPos;
                             const isHighlighted = highlightSquares.includes(pos);
                             const isCapture = captureSquares.includes(pos);
-                            console.log("squareSize: ", squareSize);
+                            // console.log("squareSize: ", squareSize);
+
+                            // 실제 rank, file 문자열
+                            const rankLabel = isFlipped ? rank + 1 : 8 - rank;
+                            const fileLabel = String.fromCharCode("a".charCodeAt(0) + (isFlipped ? 7 - file : file));
+
+                            // 경계 체크
+                            const isEdgeFile = file === 0
+                            const isEdgeRank = rank === 7
 
                             return (
                                 <div
@@ -535,16 +544,38 @@ const ChessBoard = ({
                                     onClick={() => {
                                         handleSquareClick(pos);
                                     }}
-                                    className={`absolute w-[60px] h-[60px] cursor-pointer border 
-                                    ${isDark ? "bg-green-700" : "bg-green-200"} 
-                                    ${isSelected ? "border-yellow-400"
-                                            : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
-                                        }`}
+                                    // className={`absolute w-[60px] h-[60px] cursor-pointer border 
+                                    // ${isDark ? "bg-green-700" : "bg-green-200"} 
+                                    // ${isSelected ? "border-yellow-400"
+                                    //         : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
+                                    //     }`}
+                                    className={`
+                                            absolute
+                                            cursor-pointer border
+                                            ${((drawRank + drawFile) % 2) === 1 ? 'bg-green-700' : 'bg-green-200'}
+                                            ${pos === selectedPos ? 'border-yellow-400 border-2'
+                                            : captureSquares.includes(pos) ? 'border-red-500 border-2'
+                                                : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
+                                                    : 'border-transparent'}
+        `}
                                     style={{
+                                        width: squareSize,
+                                        height: squareSize,
                                         top: rank * squareSize,
                                         left: drawFile * squareSize,
                                     }}
-                                />
+                                >
+                                    {isEdgeFile && (
+                                        <span className="absolute top-1 left-1 text-[10px] text-white block md:hidden">
+                                            {rankLabel}
+                                        </span>
+                                    )}
+                                    {isEdgeRank && (
+                                        <span className="absolute bottom-1 right-1 text-[10px] text-white block md:hidden">
+                                            {fileLabel}
+                                        </span>
+                                    )}
+                                </div>
                             );
                         })
                     )}

@@ -42,7 +42,7 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
 
   // 위치 스타일
   const positionClass = side === 'left'
-      ? 'fixed max-md:bottom-[-50px] max-md:bottom-0 max-md:right-10 max-md:-translate-x-1/2 ' +
+      ? 'fixed max-md:bottom-[-50px] max-md:top-20 max-md:right-10 max-md:-translate-x-1/2 ' +
         'md:bottom-4 md:left-4 md:transform-none md:top-auto'
       : 'fixed max-md:top-4 max-md:right-0 max-md:-translate-x-1/2 ' +
         'md:bottom-4 md:right-4 md:transform-none md:left-auto'

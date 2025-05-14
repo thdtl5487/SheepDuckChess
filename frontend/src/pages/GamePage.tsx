@@ -141,7 +141,7 @@ const GamePage = () => {
             <PlayerPanel side="opponent" />
 
             {/* 중앙: 체스판 + 연출 */}
-            <div className="relative flex-1 flex items-center justify-center">
+            <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0">
                 <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting.character_id} opponentSkinId={matchInfo?.opponentSkinSetting.character_id} />
                 <OverlayEffects />
             </div>
