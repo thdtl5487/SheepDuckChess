@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { insertGameLogsService } from '../services/gameService';
 
 export const createGame = (req: Request, res: Response) => {
     const { gameId, player1, player2 } = req.body;
@@ -18,13 +19,21 @@ export const createGame = (req: Request, res: Response) => {
 
 export const insertLogs = (req: Request, res: Response) => {
 
+    console.log("insertLog start");
+    // console.log(res);
     const { game_serial_number, white_player, black_player, win, game_log, game_date } = req.body;
-
+    
     if(!game_serial_number || !white_player || !black_player || !win || !game_log || !game_date){
         return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    console.log("game_serial_number : ", game_serial_number);
+    console.log("whitePlayer : ", white_player);
+    console.log("black_player : ", black_player);
+    console.log("win : ", win);
+    console.log("game_log", game_log);
     
+    insertGameLogsService({game_serial_number, white_player, black_player, win, game_log});
 
     return res.status(201).json({ok: true});
 }

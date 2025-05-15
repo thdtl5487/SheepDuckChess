@@ -209,7 +209,7 @@ export class ChessSession {
                     winner: this.result === "draw" ? undefined : this.result === "white_win" ? "white" : "black"
                 });
                 console.log(this.logs);
-                // this.saveLog();
+                this.saveLog();
             }
 
             console.log(`from : ${from}, to : ${to}`);
