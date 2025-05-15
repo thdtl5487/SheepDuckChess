@@ -12,8 +12,19 @@ import {
 } from "../core/ChessRules";
 import { formatMoveLog } from "../utils/formatMoveLog";
 import * as ws from "ws"; // <- 정확히 이걸로 불러와야 함
+import axios from "axios";
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const apiPort = process.env.PORT_API;
+const host = process.env.IS_JARANG === 'true' ? process.env.JARANG_HOST : process.env.TEST_HOST;
+
 
 export class ChessSession {
+    private white: number;
+    private black: number;
+    private gameId: string;
     private pieces: Piece[];
     private turn: "white" | "black";
     private moved: { [pos: string]: boolean };
@@ -23,12 +34,39 @@ export class ChessSession {
     private playerSockets: Map<string, ws.WebSocket> = new Map();
 
     constructor() {
+        this.white = 0;
+        this.black = 0;
+        this.gameId = "";
         this.pieces = [...initialBoard];
         this.turn = "white";
         this.logs = [];
         this.moved = {};
         this.enPassantTarget = null;
         this.result = "ongoing";
+    }
+
+    getWhite() {
+        return this.white;
+    }
+
+    getBlack() {
+        return this.black;
+    }
+
+    getGameId() {
+        return this.gameId;
+    }
+
+    setWhite(usn: number) {
+        this.white = usn;
+    }
+
+    setBlack(usn: number) {
+        this.black = usn;
+    }
+
+    setGameId(id: string) {
+        this.gameId = id;
     }
 
     bindSocket(userId: string, socket: ws.WebSocket) {
@@ -170,6 +208,8 @@ export class ChessSession {
                     result: this.result,                               // "white_win" | "black_win" | "draw"
                     winner: this.result === "draw" ? undefined : this.result === "white_win" ? "white" : "black"
                 });
+                console.log(this.logs);
+                // this.saveLog();
             }
 
             console.log(`from : ${from}, to : ${to}`);
@@ -189,5 +229,21 @@ export class ChessSession {
 
             return { success: true, log };
         }
+    }
+
+    private async saveLog() {
+        await axios.post(
+            `http://${host}:${apiPort}/game/insertLogs`,
+            {
+                game_serial_number: this.gameId,
+                white_player: this.white,
+                black_player: this.black,
+                win: this.result,            // "white_win" | "black_win" | "draw"
+                game_log: this.logs,        // 배열 그대로 보내도 되고, PGN 스트링으로 보내도 됩니다
+                game_date: new Date().toISOString(),
+            },{
+                withCredentials: true,
+            }
+        )
     }
 }

@@ -15,3 +15,16 @@ export const createGame = (req: Request, res: Response) => {
 
     return res.status(201).json({ ok: true });
 };
+
+export const insertLogs = (req: Request, res: Response) => {
+
+    const { game_serial_number, white_player, black_player, win, game_log, game_date } = req.body;
+
+    if(!game_serial_number || !white_player || !black_player || !win || !game_log || !game_date){
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    
+
+    return res.status(201).json({ok: true});
+}

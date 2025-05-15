@@ -2,14 +2,21 @@ import { ChessSession } from "./ChessSession";
 
 export class SessionManager {
     private sessions: Map<string, ChessSession>;
+    private users: Map<string, number>;
 
     constructor() {
         this.sessions = new Map();
+        this.users = new Map();
     }
 
-    createSession(sessionId: string): ChessSession {
+    createSession(sessionId: string, white: number, black: number): ChessSession {
         const session = new ChessSession();
         this.sessions.set(sessionId, session);
+
+        session.setWhite(white);
+        session.setBlack(black);
+        session.setGameId(sessionId);
+        
         return session;
     }
 

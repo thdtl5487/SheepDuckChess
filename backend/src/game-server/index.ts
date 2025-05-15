@@ -51,10 +51,10 @@ wss.on("connection", (socket: ws.WebSocket) => {
 
         if (msg.type === "GAME_START") {
             console.log("GAME START 메세지 받았음!!");
-            const { gameId } = msg;
+            const { white, black, gameId } = msg;
             if (!sessionManager.hasSession(gameId)) {
                 console.log("GAME START 세션 생성 중 ..... ");
-                sessionManager.createSession(gameId);
+                sessionManager.createSession(gameId, white, black);
                 socket.send(JSON.stringify({ type: "GAME_STARTED", gameId }));
             }
         }

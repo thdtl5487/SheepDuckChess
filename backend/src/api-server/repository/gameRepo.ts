@@ -1,0 +1,13 @@
+import query from '../../shared/config/db';
+import { QueryResult } from 'pg';
+
+export const insertGameLogs = async(game_serial_number:string, white_player:number, black_player:number, win:string, game_log:string[]) => {
+    const now = new Date().toISOString();
+    const result = await query(
+        `INSERT INTO sdc_game_log (game_serial_number, white_player, black_player, win, game_log, game_date) VALUES ($1, $2, $3, $4, $5, $6) `,
+        [game_serial_number, white_player, black_player, win, game_log, now]
+    );
+
+    return result.rows[0].game_serial_number;
+
+}

@@ -108,7 +108,7 @@ function startMatchingLoop() {
                         payload: {
                             gameId,
                             yourColor: 'white',
-                            opponentNick: p2.nick + '123',
+                            opponentNick: p2.nick,
                             userSkinSetting: p1.skinSetting,
                             opponentSkinSetting: p2.skinSetting
                         }
@@ -134,6 +134,8 @@ function startMatchingLoop() {
                         console.log("❤️❤️❤️❤️❤️게임 생성 메시지 보낸다이~~~");
                         gameServerSocket.send(JSON.stringify({
                             type: "GAME_START",
+                            white: p1.usn,
+                            black: p2.usn,
                             gameId: gameId
                         }));
                     }
