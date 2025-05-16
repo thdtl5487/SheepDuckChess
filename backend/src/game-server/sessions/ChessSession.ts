@@ -15,6 +15,45 @@ import * as ws from "ws"; // <- 정확히 이걸로 불러와야 함
 import axios from "axios";
 import dotenv from 'dotenv';
 
+// 체스 오프닝 데이터 불러오기 (ISC 라이센스 표기 필쑤)
+type RawOpening = {
+    name: string;
+    eco: string;
+    pgn: string;
+    fen: string;
+};
+
+// 2) Book만 뽑아오기
+const { Book: rawBook } = require("@mychess/openings") as {
+    Book: Record<string, RawOpening>;
+};
+
+// 3) 객체 → 튜플 배열로 캐스트
+const entries = Object.entries(rawBook) as [string, RawOpening][];
+
+// 4) PGN → SAN 수열 파싱 함수
+function pgnToMoves(pgn: string): string[] {
+    return pgn
+        .replace(/\d+\./g, "")   // "1.e4" → "e4"
+        .trim()
+        .split(/\s+/);           // ["e4","e5", …]
+}
+
+// 5) 튜플 배열 → 패턴 배열
+type Pattern = { name: string; eco: string; moves: string[] };
+const allPatterns: Pattern[] = entries.map(([eco, o]) => ({
+    name: o.name,
+    eco,
+    moves: pgnToMoves(o.pgn),
+}));
+
+// 6) 오프닝 vs 디펜스 분리
+const openingPatterns = allPatterns.filter(o => !/defen[cs]e/i.test(o.name));
+const defencePatterns = allPatterns.filter(o => /defen[cs]e/i.test(o.name));
+
+console.log("오프닝 패턴 : ", openingPatterns.length);
+console.log("디펜스 패턴 :", defencePatterns.length);
+
 dotenv.config();
 
 const apiPort = process.env.PORT_API;
@@ -44,6 +83,13 @@ export class ChessSession {
         this.enPassantTarget = null;
         this.result = "ongoing";
     }
+
+    // 검출 플래그 & 최대 패턴 길이
+    private openingDetected = false;
+    private defenceDetected = false;
+    private maxOpeningLen = 14;
+    private maxDefenceLen = 14;
+
 
     getWhite() {
         return this.white;
@@ -209,7 +255,7 @@ export class ChessSession {
                     winner: this.result === "draw" ? undefined : this.result === "white_win" ? "white" : "black"
                 });
                 console.log(this.logs);
-                this.saveLog();
+                this.saveLog().catch(console.error);
             }
 
             console.log(`from : ${from}, to : ${to}`);
@@ -225,9 +271,60 @@ export class ChessSession {
                 }
             });
 
+            this.detectOpeningAndDefence();
+
             this.turn = nextTurn;
 
             return { success: true, log };
+        }
+    }
+
+    // 오프닝/디펜스 검출 기능
+    private detectOpeningAndDefence() {
+        const sanMoves = this.logs.map(l => l.split(" ")[0]);
+        console.log(sanMoves);
+        const ply = sanMoves.length;
+
+        // Opening
+        if (!this.openingDetected) {
+            if (ply > this.maxOpeningLen) {
+                this.openingDetected = true;
+            } else {
+                const match = openingPatterns.find(o =>
+                    o.moves.length >= ply &&
+                    o.moves.slice(0, ply).join(",") === sanMoves.join(",")
+                );
+                if (match) {
+                    console.log("오프닝 발생!!!! : ", match.name);
+                    this.openingDetected = true;
+                    this.broadcast({
+                        type: "OPENING_DETECTED",
+                        openingName: match.name,
+                        ecoCode: match.eco,
+                    });
+                }
+            }
+        }
+
+        // Defence (짝수수 이후)
+        if (!this.defenceDetected && ply >= 2 && ply % 2 === 0) {
+            if (ply > this.maxDefenceLen) {
+                this.defenceDetected = true;
+            } else {
+                const matchD = defencePatterns.find(o =>
+                    o.moves.length >= ply &&
+                    o.moves.slice(0, ply).join(",") === sanMoves.join(",")
+                );
+                if (matchD) {
+                    this.defenceDetected = true;
+                    console.log("디펜스 발생!!!! : ", matchD.name);
+                    this.broadcast({
+                        type: "DEFENCE_DETECTED",
+                        defenceName: matchD.name,
+                        ecoCode: matchD.eco,
+                    });
+                }
+            }
         }
     }
 
@@ -241,9 +338,9 @@ export class ChessSession {
                 win: this.result,            // "white_win" | "black_win" | "draw"
                 game_log: this.logs,        // 배열 그대로 보내도 되고, PGN 스트링으로 보내도 됩니다
                 game_date: new Date().toISOString(),
-            },{
-                withCredentials: true,
-            }
+            }, {
+            withCredentials: true,
+        }
         )
     }
 }
