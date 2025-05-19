@@ -82,6 +82,7 @@ const GamePage = () => {
             });
     }, [user, setUser]);
 
+    
 
     // 2) WebSocket 연결 전담 이펙트
     useEffect(() => {

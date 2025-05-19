@@ -193,12 +193,11 @@ export class ChessSession {
                     from: from,
                     to: to,
                     pieceType: piece.type
-
-                }
+                },
+                isCaptured: false
             });
             return { success: true, log };
         } else {
-
             const target = this.pieces.find(p => p.position === to);
             const isCapture = !!target;
 
@@ -258,7 +257,7 @@ export class ChessSession {
                 this.saveLog().catch(console.error);
             }
 
-            console.log(`from : ${from}, to : ${to}`);
+            // console.log(`from : ${from}, to : ${to}`);
             this.broadcast({
                 type: "TURN_RESULT",
                 log,
@@ -268,7 +267,10 @@ export class ChessSession {
                     from: from,
                     to: to,
                     pieceType: piece.type
-                }
+                },
+                isCapture: isCapture,
+                attacker: piece.type,
+                victim: target?.type
             });
 
             this.detectOpeningAndDefence();
