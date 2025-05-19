@@ -517,7 +517,7 @@ const ChessBoard = ({
                 {/* !!! 체스판 렌더 !!! */}
                 <div
                     ref={boardRef}
-                    className="chessboard relative mx-auto w-full mx-0 md:w-[90vmin] md:mx-auto max-w-fullaspect-square"
+                    className="chessboard relative mx-auto w-full mx-0 md:w-[70vmin] md:mx-auto max-w-fullaspect-square"
                     style={{ backgroundColor: "red" }}
                 >
                     {[...Array(8)].map((_, rank) =>
@@ -606,7 +606,10 @@ const ChessBoard = ({
                         const skinSet = (piece.color === myColor) ? userSkinId : opponentSkinId;
                         const propName = `piece_skin_${piece.type}` as keyof SkinSetting;
                         const skinId = skinSet[propName];
-                        const flag = piece.color === 'white' ? 1:0;
+                        const flag = piece.color === 'white' ? 1 : 0;
+
+                        const PIECE_SIZE = 56;
+                        const offset = (squareSize - PIECE_SIZE) / 2;
 
                         const imgUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
 
@@ -614,10 +617,10 @@ const ChessBoard = ({
                             ? (
                                 <motion.div
                                     key={piece.position}
-                                    initial={{ x: fromCoords.x, y: fromCoords.y }}
-                                    animate={{ x: toCoords.x, y: toCoords.y }}
+                                    initial={{ x: fromCoords.x + offset, y: fromCoords.y+offset }}
+                                    animate={{ x: toCoords.x + offset, y: toCoords.y + offset}}
                                     transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                    className={`piece absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
                                     style={{ pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
                                 >
                                     {/* {pieceIcons[piece.color][piece.type]} */}
@@ -625,8 +628,8 @@ const ChessBoard = ({
                             ) : (
                                 <div
                                     key={i}
-                                    className={`piece absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                    style={{ left: x, top: y, pointerEvents: "none", backgroundImage: `url(${imgUrl}`}}
+                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
+                                    style={{ left: x +offset, top: y+offset, pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
                                 >
                                     {/* {pieceIcons[piece.color][piece.type]} */}
                                 </div>
