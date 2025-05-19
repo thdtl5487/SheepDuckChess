@@ -21,6 +21,7 @@ wss.on("connection", (socket: ws.WebSocket) => {
 
     socket.on("message", (data) => {
         const msg = JSON.parse(data.toString());
+        console.log("message : ", msg);
         if (msg.type === "JOIN_GAME") {
             console.log(`🔗 유저 ${msg.userId} 가 ${msg.gameId} 세션에 접속 시도`);
 
