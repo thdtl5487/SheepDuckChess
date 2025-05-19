@@ -5,6 +5,7 @@ import * as ChessRules from "./ChessRules";
 import { useNavigate } from "react-router-dom";
 import IngameAlertModal from "./IngameAlertModal";
 import EmotionOverlay from "../game/EmotionOverlay";
+import { SkinSetting } from "../../types/matchInfo";
 
 // const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
 const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
@@ -602,6 +603,13 @@ const ChessBoard = ({
                         const isMovedPiece = animatedTo === piece.position;
                         const duration = isMovedPiece ? (isKnight ? 0.4 : 0.3) : 0;
 
+                        const skinSet = (piece.color === myColor) ? userSkinId : opponentSkinId;
+                        const propName = `piece_skin_${piece.type}` as keyof SkinSetting;
+                        const skinId = skinSet[propName];
+                        const flag = piece.color === 'white' ? 1:0;
+
+                        const imgUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
+
                         return isMovedPiece
                             ? (
                                 <motion.div
@@ -609,18 +617,18 @@ const ChessBoard = ({
                                     initial={{ x: fromCoords.x, y: fromCoords.y }}
                                     animate={{ x: toCoords.x, y: toCoords.y }}
                                     transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                    className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                    style={{ pointerEvents: "none" }}
+                                    className={`piece absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    style={{ pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
                                 >
-                                    {pieceIcons[piece.color][piece.type]}
+                                    {/* {pieceIcons[piece.color][piece.type]} */}
                                 </motion.div>
                             ) : (
                                 <div
                                     key={i}
-                                    className={`absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                    style={{ left: x, top: y, pointerEvents: "none" }}
+                                    className={`piece absolute w-[60px] h-[60px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    style={{ left: x, top: y, pointerEvents: "none", backgroundImage: `url(${imgUrl}`}}
                                 >
-                                    {pieceIcons[piece.color][piece.type]}
+                                    {/* {pieceIcons[piece.color][piece.type]} */}
                                 </div>
                             );
                     })}
