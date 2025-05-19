@@ -523,12 +523,27 @@ const ChessBoard = ({
                         [...Array(8)].map((_, file) => {
                             const drawRank = isFlipped ? rank : 7 - rank;
                             const drawFile = file;
-                            const isDark = (drawRank + drawFile) % 2 === 1;
                             const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
-                            const isSelected = pos === selectedPos;
-                            const isHighlighted = highlightSquares.includes(pos);
-                            const isCapture = captureSquares.includes(pos);
-                            // console.log("squareSize: ", squareSize);
+
+                            // 보여지는 랭크인거임. 실제 랭크 아님
+                            const displayRank = isFlipped
+                                ? rank + 1            // rowIndex 0→1, …, 7→8
+                                : 8 - rank;           // rowIndex 0→8, …, 7→1
+                            // 4) 아래(내 측) 절반인지 체크
+                            const isBottomHalf = isFlipped ? displayRank <= 4 : displayRank > 4;
+
+                            // 5) 바탕에 쓸 스킨 ID 고르기
+                            //    아래 절반이면 내 스킨, 아니면 상대 스킨
+                            const boardSkinIdToUse = isBottomHalf
+                                ? userSkinId.board_skin
+                                : opponentSkinId.board_skin;
+
+                            const isDarkSquare = (file + rank) % 2 === 0;
+                            const tileFlag = isDarkSquare ? 1 : 0;
+
+                            const bgUrl = `/asset/BoardImage/${boardSkinIdToUse}_${tileFlag}.png`;
+
+                            // console.log('bgUrl : ',bgUrl)
 
                             // 실제 rank, file 문자열
                             const rankLabel = isFlipped ? rank + 1 : 8 - rank;
@@ -544,15 +559,9 @@ const ChessBoard = ({
                                     onClick={() => {
                                         handleSquareClick(pos);
                                     }}
-                                    // className={`absolute w-[60px] h-[60px] cursor-pointer border 
-                                    // ${isDark ? "bg-green-700" : "bg-green-200"} 
-                                    // ${isSelected ? "border-yellow-400"
-                                    //         : isCapture ? "border-red-500 border-2" : isHighlighted ? "border-blue-400 border-2" : "border-transparent"
-                                    //     }`}
                                     className={`
                                             absolute
                                             cursor-pointer border
-                                            ${((drawRank + drawFile) % 2) === 1 ? 'bg-green-700' : 'bg-green-200'}
                                             ${pos === selectedPos ? 'border-yellow-400 border-2'
                                             : captureSquares.includes(pos) ? 'border-red-500 border-2'
                                                 : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
@@ -563,6 +572,8 @@ const ChessBoard = ({
                                         height: squareSize,
                                         top: rank * squareSize,
                                         left: drawFile * squareSize,
+                                        backgroundImage: `url(${bgUrl})`,
+                                        backgroundSize: 'cover'
                                     }}
                                 >
                                     {isEdgeFile && (
@@ -685,14 +696,14 @@ const ChessBoard = ({
             <EmotionOverlay
                 pieces={pieces}
                 characterColor={myColor}
-                skinId={userSkinId}
+                skinId={userSkinId.character_id}
                 side="left"
             />
             {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
             <EmotionOverlay
                 pieces={pieces}
                 characterColor={myColor === "white" ? "black" : "white"}
-                skinId={opponentSkinId}
+                skinId={opponentSkinId.character_id}
                 side="right"
             />
         </>
