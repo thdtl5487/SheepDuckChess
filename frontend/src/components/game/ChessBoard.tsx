@@ -243,6 +243,8 @@ const ChessBoard = ({
 
         if (myColor !== turn) return; // 💥 상대 턴이면 클릭 무시
 
+        if(socket?.readyState !== WebSocket.OPEN) return; // 소켓 연결 되어있지 않은 경우 클릭 무시
+
         if (!selectedPos) {
             const piece = pieces.find((p) => p.position === pos);
             if (piece) {

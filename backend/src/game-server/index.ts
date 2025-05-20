@@ -19,6 +19,10 @@ wss.on("listening", () => {
 wss.on("connection", (socket: ws.WebSocket) => {
     console.log("✅ New player connected!");
 
+    let boundSession: ReturnType<SessionManager['getSession']> | null = null;
+    let boundUserId: string | null = null;
+    let boundGameId: string | null = null;
+
     socket.on("message", (data) => {
         const msg = JSON.parse(data.toString());
         console.log("message : ", msg);
@@ -34,8 +38,25 @@ wss.on("connection", (socket: ws.WebSocket) => {
                 return;
             }
 
+            const already = session.hasUser(msg.userId);
+
             session.bindSocket(msg.userId, socket);
+            boundSession = session;
+            boundUserId = msg.userId;
+            boundGameId = msg.gameId;
+            if (already) {
+                session.broadcast({ type: "OPPONENT_RECONNECTED", userId: msg.userId });
+            }
+
             console.log(`✅ ${msg.userId} 바인딩 완료`);
+
+            // 재접 메시지
+            if (already) {
+                session.broadcast({
+                    type: "OPPONENT_RECONNECTED",
+                    userId: msg.userId
+                });
+            }
         }
 
         if (msg.type === "TURN_MOVE") {
@@ -60,4 +81,22 @@ wss.on("connection", (socket: ws.WebSocket) => {
             }
         }
     });
+
+    socket.on("close", () => {
+        if (boundSession && boundUserId && boundGameId) {
+            // 소켓 언바인드
+            boundSession.unbindSocket(boundUserId);
+            // 상대 끊김 알림
+            boundSession.broadcast({ type: "OPPONENT_DISCONNECTED", userId: boundUserId });
+            // 빈 세션이면 완전 삭제
+            if ((boundSession as any).playerSockets.size === 0) {
+                sessionManager.deleteSession(boundGameId);
+            }
+        }
+    })
 });
+
+const CLEANUP_INTERVAL = 1000 * 60 * 5; // 5분마다
+setInterval(() => {
+    sessionManager.cleanupEmptySessions();
+}, CLEANUP_INTERVAL);

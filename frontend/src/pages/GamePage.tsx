@@ -15,6 +15,10 @@ const gameServerURL = gameURL;
 
 let globalWsInitialized = false;
 
+const RECONNECT_INTERVAL = 3000; // ms
+const MAX_RETRIES = 5;
+
+
 const GamePage = () => {
     const setMatchInfo = useSetRecoilState(matchInfoAtom);
 
@@ -49,6 +53,9 @@ const GamePage = () => {
                 opponentSkinSetting: opponentSkinSetting
             });
 
+            localStorage.setItem('matchInfo', JSON.stringify(payload));
+            localStorage.setItem('ongoingGameId', payload.gameId);
+
             navigate(`/game/${gId}`);
         }
     );
@@ -60,12 +67,49 @@ const GamePage = () => {
     // Local state
     const [turnResult, setTurnResult] = useState<any | null>(null);
     const [socket, setSocket] = useState<WebSocket | null>(null);
+    const reconnectCount = useRef(0);
+    const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+
     const [gameOver, setGameOver] = useState<{
         result: "white_win" | "black_win" | "draw";
         winner?: "white" | "black";
     } | null>(null);
 
     const myColor = matchInfo?.yourColor ?? "white";
+
+    // 새로고침 시 게임 복구
+    useEffect(() => {
+        // 1) 리코일에 없고, 스토리지엔 있는 경우
+        if (!matchInfo && localStorage.getItem('matchInfo')) {
+            try {
+                const saved = JSON.parse(localStorage.getItem('matchInfo')!);
+                setMatchInfo(saved);
+            } catch {
+                localStorage.removeItem('matchInfo');
+                navigate('/lobby');
+            }
+        }
+    }, [matchInfo, setMatchInfo, navigate]);
+
+    useEffect(() => {
+        const stored = localStorage.getItem("ongoingGameId");
+
+        // 2) 저장된 게임 ID가 없으면 → 로비로
+        if (!stored) {
+            navigate("/main");
+            return;
+        }
+
+        // 3) URL param(gameId) 과 로컬 스토리지 ID가 다르면
+        //    → 로컬 스토리지 기준으로 경로 보정
+        if (stored !== gameId) {
+            navigate(`/game/${stored}`);
+            return;
+        }
+
+        // 4) 여기까지 통과하면 `stored === gameId` 상태,
+        //    바로 WebSocket 연결 로직으로 넘어갑니다.
+    }, [gameId, navigate]);
 
     // 1) user 복구 전담 이펙트
     useEffect(() => {
@@ -82,57 +126,72 @@ const GamePage = () => {
             });
     }, [user, setUser]);
 
-    
+
 
     // 2) WebSocket 연결 전담 이펙트
-    useEffect(() => {
-        if (!user || !gameId || socket) return;
-        globalWsInitialized = true; // ← 이 라인으로 이후 재실행 차단
 
+    // ① connectWebSocket 함수로 ws 초기화 + 핸들러 등록
+    const connectWebSocket = () => {
         console.log("🔥 WebSocket 연결 시도");
         const ws = new WebSocket(gameServerURL);
+
         setSocket(ws);
 
         ws.onopen = () => {
+            reconnectCount.current = 0;
             console.log("✅ WebSocket 연결됨, JOIN_GAME 전송");
-            ws.send(
-                JSON.stringify({
-                    type: "JOIN_GAME",
-                    gameId,
-                    userId: user.usn,
-                })
-            );
+            ws.send(JSON.stringify({
+                type: "JOIN_GAME",
+                gameId,
+                userId: user!.usn
+            }));
         };
 
         ws.onmessage = evt => {
             const msg = JSON.parse(evt.data);
+            console.log("message : ", msg);
 
             switch (msg.type) {
                 case "TURN_RESULT":
                     setTurnResult(msg);
                     break;
                 case "GAME_OVER":
-                    console.log("🎉 게임 종료!");
-                    setGameOver({
-                        result: msg.result,
-                        winner: msg.winner,
-                    });
+                    setGameOver({ result: msg.result, winner: msg.winner });
+                    localStorage.removeItem('matchInfo');
+                    localStorage.removeItem('ongoingGameId');
                     break;
             }
-        }
+        };
 
         ws.onerror = e => {
             console.error("🚨 WebSocket 에러:", e);
+            ws.close();
         };
 
         ws.onclose = e => {
             console.warn("🔌 WebSocket 닫힘", e);
+            if (reconnectCount.current < MAX_RETRIES) {
+                reconnectCount.current += 1;
+                reconnectTimer.current = setTimeout(
+                    connectWebSocket,
+                    RECONNECT_INTERVAL
+                );
+            } else {
+                localStorage.removeItem("ongoingGameId");
+                navigate("/lobby");
+            }
         };
+    };
 
-        // 언마운트나 deps 변경 시 소켓 정리
+    useEffect(() => {
+        if (!user || !gameId) return;
+        // socket이 없을 때만 연결 시도
+        if (!socket) connectWebSocket();
+
         return () => {
-            console.log("🧹 WebSocket 정리");
-            ws.close();
+            // cleanup: 타이머 해제, 소켓 닫기
+            reconnectTimer.current && clearTimeout(reconnectTimer.current);
+            socket?.close();
         };
     }, [user, gameId]);
 
@@ -140,6 +199,27 @@ const GamePage = () => {
         <div className="relative w-full h-screen flex flex-col bg-gray-900 text-white">
             {/* 상단: 상대 플레이어 패널 */}
             <PlayerPanel side="opponent" />
+
+            {/* 소켓나가기 */}
+            <button
+                className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded z-50"
+                onClick={() => {
+                    socket?.close();
+                }}
+            >
+                Close Socket
+            </button>
+
+            {/* 나가기 버튼 */}
+            <button
+                className="absolute top-4 right-4 px-3 py-1 bg-red-500 text-white rounded"
+                onClick={() => {
+                    localStorage.removeItem("ongoingGameId");
+                    // navigate("/main");
+                }}
+            >
+                Leave Game (테스트)
+            </button>
 
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">

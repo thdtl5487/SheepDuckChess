@@ -35,4 +35,12 @@ export class SessionManager {
     getAllSessionIds(): string[] {
         return Array.from(this.sessions.keys());
     }
+
+    cleanupEmptySessions(){
+        for(const [id, sess] of this.sessions){
+            if((sess as any).playerSockets.size === 0){
+                this.sessions.delete(id);
+            }
+        }
+    }
 }

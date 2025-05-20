@@ -90,6 +90,18 @@ export class ChessSession {
     private maxOpeningLen = 14;
     private maxDefenceLen = 14;
 
+    hasUser(userId: string){
+        if(this.playerSockets.get(userId)){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    unbindSocket(userId: string){
+        this.playerSockets.delete(userId);
+    }
+
 
     getWhite() {
         return this.white;
@@ -116,7 +128,15 @@ export class ChessSession {
     }
 
     bindSocket(userId: string, socket: ws.WebSocket) {
+        const alreadyConnected = this.playerSockets.has(userId);
         this.playerSockets.set(userId, socket);
+        
+        if(alreadyConnected){
+            this.broadcast({
+                type: "OPPONENT_RECONNECTED",
+            })
+        }
+
         console.log(`❤️소켓 바인딩 성공 userId : ${userId}`)
     }
 

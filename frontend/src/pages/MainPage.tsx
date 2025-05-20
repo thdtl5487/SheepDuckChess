@@ -74,7 +74,9 @@ const MainPage = (): ReactElement | null => {
                         opponentNick={matchedInfo?.opponentNick}
                         yourColor={matchedInfo?.yourColor}
                         onEnterQueue={() => setTriggerQueue(true)}
-                        onFinished={() => navigate(`/game/${matchedInfo?.gameId}`)}
+                        onFinished={() => {
+                            navigate(`/game/${matchedInfo?.gameId}`)
+                        }}
                     />
                     <button
                         className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-500 text-white rounded hover:bg-red-600 z-50"

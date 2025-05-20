@@ -62,7 +62,9 @@ const MatchOverlay = ({ opponentNick, yourColor, onEnterQueue, onFinished }: Mat
         }, 2000);
 
         const timer3 = setTimeout(() => {
-            if (onFinished) onFinished(); // 페이지 이동
+            if (onFinished){
+                onFinished()
+            }; // 페이지 이동
         }, 3000);
 
         return () => {
