@@ -15,3 +15,33 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.moveIndicate {
+  position: absolute;
+}
+
+.moveIndicate.highlight::after {
+  content: "";
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  background-color: rgba(59, 130, 246, 0.4);  /* blue-500 @40% */
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.moveIndicate.captureSquares::after{
+  content: "";
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  background-color: rgba(246, 59, 75, 0.4);  /* blue-500 @40% */
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+}

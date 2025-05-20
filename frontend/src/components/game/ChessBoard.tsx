@@ -532,6 +532,8 @@ const ChessBoard = ({
                             const drawFile = file;
                             const pos = ChessRules.coordsToPosition(file, rank, isFlipped);
 
+                            const isHighlight = highlightSquares.includes(pos);
+
                             // 보여지는 랭크인거임. 실제 랭크 아님
                             const displayRank = isFlipped
                                 ? rank + 1            // rowIndex 0→1, …, 7→8
@@ -566,14 +568,17 @@ const ChessBoard = ({
                                     onClick={() => {
                                         handleSquareClick(pos);
                                     }}
-                                    className={`
-                                            absolute
-                                            cursor-pointer border
-                                            ${pos === selectedPos ? 'border-yellow-400 border-2'
-                                            : captureSquares.includes(pos) ? 'border-red-500 border-2'
-                                                : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
-                                                    : 'border-transparent'}
-        `}
+        //                             className={`
+        //                                     absolute
+        //                                     cursor-pointer border
+        //                                     ${pos === selectedPos ? 'border-yellow-400 border-2'
+        //                                     : captureSquares.includes(pos) ? 'border-red-500 border-2'
+        //                                         : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
+        //                                             : 'border-transparent'}
+        // `}
+                                    className={
+                                        `moveIndicate ${isHighlight ? "highlight" : captureSquares.includes(pos) ? "captureSquares" : ""}`
+                                    }
                                     style={{
                                         width: squareSize,
                                         height: squareSize,
