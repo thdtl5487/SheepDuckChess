@@ -129,6 +129,7 @@ const ChessBoard = ({
     // 연출용 변수 (애니메이션)
     const [animatedFrom, setAnimatedFrom] = useState<string | null>(null);
     const [animatedTo, setAnimatedTo] = useState<string | null>(null);
+    const [bouncePos, setBouncePos] = useState<string | null>(null);
 
     const boardRef = useRef<HTMLDivElement>(null);
     const [squareSize, setSquareSize] = useState(60);
@@ -233,7 +234,7 @@ const ChessBoard = ({
     }, [turnResult])
 
     const handleSquareClick = (pos: string) => {
-        console.log("▶️ handleSquareClick", { pos, myColor, turn, socketState: socket?.readyState });
+        // console.log("▶️ handleSquareClick", { pos, myColor, turn, socketState: socket?.readyState });
 
         if (gameOver) {
             // 게임 종료 후 클릭 무시
@@ -246,6 +247,11 @@ const ChessBoard = ({
             const piece = pieces.find((p) => p.position === pos);
             if (piece) {
                 if (piece.color !== turn) return; // 턴 아닌 기물은 무시
+
+                // 클릭 쫄깃 애니메이션
+                setBouncePos(pos);
+                setTimeout(()=> setBouncePos(null), 100);
+
                 setSelectedPos(pos);
                 // 이동 가능한 칸 하이라이트 계산
                 const possibleSquares = [...Array(8)].flatMap((_, rank) =>
@@ -612,6 +618,7 @@ const ChessBoard = ({
                         const offset = (squareSize - PIECE_SIZE) / 2;
 
                         const imgUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
+                        const isBouncing = bouncePos === piece.position;
 
                         return isMovedPiece
                             ? (
@@ -626,13 +633,15 @@ const ChessBoard = ({
                                     {/* {pieceIcons[piece.color][piece.type]} */}
                                 </motion.div>
                             ) : (
-                                <div
+                                <motion.div
                                     key={i}
                                     className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
                                     style={{ left: x +offset, top: y+offset, pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
+                                    animate={isBouncing? {scale: [1, 1.2, 1]} : {}}
+                                    transition={{duration: 0.1}}
                                 >
                                     {/* {pieceIcons[piece.color][piece.type]} */}
-                                </div>
+                                </motion.div>
                             );
                     })}
 
