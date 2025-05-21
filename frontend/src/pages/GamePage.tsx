@@ -30,6 +30,7 @@ const GamePage = () => {
 
     console.log("matchInfo : ", matchInfo);
     // 매치 완료 후 리코일에 저장
+
     useMatchSocket(
         user!,
         triggerQueue,
@@ -52,9 +53,6 @@ const GamePage = () => {
                 userSkinSetting,
                 opponentSkinSetting: opponentSkinSetting
             });
-
-            localStorage.setItem('matchInfo', JSON.stringify(payload));
-            localStorage.setItem('ongoingGameId', payload.gameId);
 
             navigate(`/game/${gId}`);
         }
@@ -92,7 +90,7 @@ const GamePage = () => {
     }, [matchInfo, setMatchInfo, navigate]);
 
     useEffect(() => {
-        const stored = localStorage.getItem("ongoingGameId");
+        const stored = JSON.parse(localStorage.getItem('matchInfo')!).gameId;
 
         // 2) 저장된 게임 ID가 없으면 → 로비로
         if (!stored) {
@@ -158,7 +156,6 @@ const GamePage = () => {
                 case "GAME_OVER":
                     setGameOver({ result: msg.result, winner: msg.winner });
                     localStorage.removeItem('matchInfo');
-                    localStorage.removeItem('ongoingGameId');
                     break;
             }
         };
@@ -177,7 +174,7 @@ const GamePage = () => {
                     RECONNECT_INTERVAL
                 );
             } else {
-                localStorage.removeItem("ongoingGameId");
+                localStorage.removeItem("matchInfo");
                 navigate("/lobby");
             }
         };
@@ -214,8 +211,8 @@ const GamePage = () => {
             <button
                 className="absolute top-4 right-4 px-3 py-1 bg-red-500 text-white rounded"
                 onClick={() => {
-                    localStorage.removeItem("ongoingGameId");
-                    // navigate("/main");
+                    localStorage.removeItem("matchInfo");
+                    navigate("/main");
                 }}
             >
                 Leave Game (테스트)

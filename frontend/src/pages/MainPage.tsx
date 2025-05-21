@@ -21,12 +21,12 @@ const MainPage = (): ReactElement | null => {
     const handleMatchStart = () => {
         setMatchingStarted(true);
     };
-    
-    const setMatchInfo = useSetRecoilState(matchInfoAtom); 
+
+    const setMatchInfo = useSetRecoilState(matchInfoAtom);
 
     const socketRef = useMatchSocket(user!, triggerQueue, (payload) => {
         setMatchedInfo(payload);
-        setMatchInfo({           
+        setMatchInfo({
             gameId: payload.gameId,
             yourColor: payload.yourColor,
             opponentNick: payload.opponentNick,
@@ -75,6 +75,8 @@ const MainPage = (): ReactElement | null => {
                         yourColor={matchedInfo?.yourColor}
                         onEnterQueue={() => setTriggerQueue(true)}
                         onFinished={() => {
+                            localStorage.setItem('matchInfo', JSON.stringify(matchedInfo));
+                            // localStorage.setItem('ongoingGameId', matchedInfo.gameId);
                             navigate(`/game/${matchedInfo?.gameId}`)
                         }}
                     />
