@@ -71,6 +71,7 @@ export class ChessSession {
     private enPassantTarget: string | null;
     private result: "ongoing" | "white_win" | "black_win" | "draw";
     private playerSockets: Map<string, ws.WebSocket> = new Map();
+    private lastMove: { from: string; to: string; pieceType: string } | null = null;
 
     constructor() {
         this.white = 0;
@@ -82,6 +83,7 @@ export class ChessSession {
         this.moved = {};
         this.enPassantTarget = null;
         this.result = "ongoing";
+        this.lastMove = null;
     }
 
     // 검출 플래그 & 최대 패턴 길이
@@ -90,15 +92,17 @@ export class ChessSession {
     private maxOpeningLen = 14;
     private maxDefenceLen = 14;
 
-    hasUser(userId: string){
-        if(this.playerSockets.get(userId)){
+
+
+    hasUser(userId: string) {
+        if (this.playerSockets.get(userId)) {
             return true;
-        }else{
+        } else {
             return false;
         }
     }
 
-    unbindSocket(userId: string){
+    unbindSocket(userId: string) {
         this.playerSockets.delete(userId);
     }
 
@@ -130,12 +134,30 @@ export class ChessSession {
     bindSocket(userId: string, socket: ws.WebSocket) {
         const alreadyConnected = this.playerSockets.has(userId);
         this.playerSockets.set(userId, socket);
+
+        this.broadcast({
+            type: "OPPONENT_RECONNECTED",
+        })
         
-        if(alreadyConnected){
+        // (재)접속 시점마다 재접속한 소켓에 현재 보드 상태만 보내 줌
+        const initState = {
+            type: "TURN_RESULT",      // 기존 TURN_RESULT 로 통일
+            board: this.pieces,        // current board array
+            turn: this.turn,          // 현재 턴
+            logs: this.logs,          // 지금까지의 move log
+            lastMove: this.lastMove,               // 초기 상태엔 마지막 수 없으니 null
+            captured: false               // 캡처 이벤트 아님
+        };
+        console.log(initState);
+        socket.send(JSON.stringify(initState));
+
+        socket.on("close", () => {
+            this.playerSockets.delete(userId);
             this.broadcast({
-                type: "OPPONENT_RECONNECTED",
-            })
-        }
+                type: "OPPONENT_DISCONNECTED",
+                userId,
+            });
+        });
 
         console.log(`❤️소켓 바인딩 성공 userId : ${userId}`)
     }
@@ -216,6 +238,7 @@ export class ChessSession {
                 },
                 isCaptured: false
             });
+            this.lastMove = { from, to, pieceType: piece.type };
             return { success: true, log };
         } else {
             const target = this.pieces.find(p => p.position === to);
@@ -292,6 +315,8 @@ export class ChessSession {
                 attacker: piece.type,
                 victim: target?.type
             });
+
+            this.lastMove = { from, to, pieceType: piece.type };
 
             this.detectOpeningAndDefence();
 

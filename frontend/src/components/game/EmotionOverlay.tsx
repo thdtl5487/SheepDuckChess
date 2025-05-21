@@ -10,6 +10,7 @@ interface EmotionOverlayProps {
   skinId: number;
   /** 오버레이 위치: 왼쪽(opponent) 또는 오른쪽(user) */
   side: 'left' | 'right';
+  isOpponentConnected: boolean;
 }
 
 // material 점수 차에 따라 상태 번호 결정 (1~5)
@@ -22,7 +23,7 @@ function getStateNum(diff: number): number {
   return 3;
 }
 
-const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor, skinId, side }) => {
+const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor, skinId, side, isOpponentConnected }) => {
   // 전체 점수 계산
   const whiteScore = pieces
     .filter(p => p.color === 'white')
@@ -58,6 +59,7 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
         src={imgSrc}
         alt={`emotion-${stateNum}`}
         className={`w-60 h-60 ${flipClass}`}
+        style={{filter: isOpponentConnected ? "none" : "grayscale(100%) saturate(50%) brightness(80%)"}}
       />
     </div>
   );

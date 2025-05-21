@@ -93,7 +93,8 @@ const ChessBoard = ({
     socket,
     gameOver,
     userSkinId,
-    opponentSkinId }:
+    opponentSkinId,
+    isOpponentConnected }:
     {
         isFlipped?: boolean,
         turnResult?: any;
@@ -106,6 +107,7 @@ const ChessBoard = ({
         } | null;
         userSkinId: any;
         opponentSkinId: any;
+        isOpponentConnected: boolean;
     }) => {
 
     // 상태 정의 시작 --
@@ -192,7 +194,7 @@ const ChessBoard = ({
 
     useEffect(() => {
         // ✅ null이면 패스
-        if (!turnResult || !turnResult.board) return;
+        if (!turnResult || !turnResult.board || !turnResult.lastMove) return;
 
         setPieces(turnResult.board);
         setTurn(turnResult.turn);
@@ -243,7 +245,7 @@ const ChessBoard = ({
 
         if (myColor !== turn) return; // 💥 상대 턴이면 클릭 무시
 
-        if(socket?.readyState !== WebSocket.OPEN) return; // 소켓 연결 되어있지 않은 경우 클릭 무시
+        if (socket?.readyState !== WebSocket.OPEN) return; // 소켓 연결 되어있지 않은 경우 클릭 무시
 
         if (!selectedPos) {
             const piece = pieces.find((p) => p.position === pos);
@@ -252,7 +254,7 @@ const ChessBoard = ({
 
                 // 클릭 쫄깃 애니메이션
                 setBouncePos(pos);
-                setTimeout(()=> setBouncePos(null), 100);
+                setTimeout(() => setBouncePos(null), 100);
 
                 setSelectedPos(pos);
                 // 이동 가능한 칸 하이라이트 계산
@@ -570,14 +572,14 @@ const ChessBoard = ({
                                     onClick={() => {
                                         handleSquareClick(pos);
                                     }}
-        //                             className={`
-        //                                     absolute
-        //                                     cursor-pointer border
-        //                                     ${pos === selectedPos ? 'border-yellow-400 border-2'
-        //                                     : captureSquares.includes(pos) ? 'border-red-500 border-2'
-        //                                         : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
-        //                                             : 'border-transparent'}
-        // `}
+                                    //                             className={`
+                                    //                                     absolute
+                                    //                                     cursor-pointer border
+                                    //                                     ${pos === selectedPos ? 'border-yellow-400 border-2'
+                                    //                                     : captureSquares.includes(pos) ? 'border-red-500 border-2'
+                                    //                                         : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
+                                    //                                             : 'border-transparent'}
+                                    // `}
                                     className={
                                         `moveIndicate ${isHighlight ? "highlight" : captureSquares.includes(pos) ? "captureSquares" : ""}`
                                     }
@@ -624,32 +626,33 @@ const ChessBoard = ({
                         const PIECE_SIZE = 56;
                         const offset = (squareSize - PIECE_SIZE) / 2;
 
-                        const imgUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
+                        const pieceUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
                         const isBouncing = bouncePos === piece.position;
 
                         return isMovedPiece
-                            ? (
-                                <motion.div
-                                    key={piece.position}
-                                    initial={{ x: fromCoords.x + offset, y: fromCoords.y+offset }}
-                                    animate={{ x: toCoords.x + offset, y: toCoords.y + offset}}
-                                    transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                    style={{ pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
-                                >
-                                    {/* {pieceIcons[piece.color][piece.type]} */}
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    key={i}
-                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
-                                    style={{ left: x +offset, top: y+offset, pointerEvents: "none", backgroundImage: `url(${imgUrl}` }}
-                                    animate={isBouncing? {scale: [1, 1.2, 1]} : {}}
-                                    transition={{duration: 0.1}}
-                                >
-                                    {/* {pieceIcons[piece.color][piece.type]} */}
-                                </motion.div>
-                            );
+                        ?
+                        (
+                            <motion.div
+                                key={piece.position}
+                                initial={{ x: fromCoords.x + offset, y: fromCoords.y+offset }}
+                                animate={{ x: toCoords.x + offset, y: toCoords.y + offset}}
+                                transition={{ type: isKnight ? "spring" : "tween", duration }}
+                                className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                style={{ pointerEvents: "none", backgroundImage: `url(${pieceUrl}` }}
+                            >
+                                {/* {pieceIcons[piece.color][piece.type]} */}
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key={i}
+                                className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
+                                style={{ left: x +offset, top: y+offset, pointerEvents: "none", backgroundImage: `url(${pieceUrl}` }}
+                                animate={isBouncing? {scale: [1, 1.2, 1]} : {}}
+                                transition={{duration: 0.1}}
+                            >
+                                {/* {pieceIcons[piece.color][piece.type]} */}
+                            </motion.div>
+                        );
                     })}
 
                     {/*게임 종료 모달*/}
@@ -725,6 +728,7 @@ const ChessBoard = ({
                 characterColor={myColor}
                 skinId={userSkinId.character_id}
                 side="left"
+                isOpponentConnected={true}
             />
             {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
             <EmotionOverlay
@@ -732,6 +736,7 @@ const ChessBoard = ({
                 characterColor={myColor === "white" ? "black" : "white"}
                 skinId={opponentSkinId.character_id}
                 side="right"
+                isOpponentConnected={isOpponentConnected}
             />
         </>
     );

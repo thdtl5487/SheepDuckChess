@@ -67,6 +67,7 @@ const GamePage = () => {
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const reconnectCount = useRef(0);
     const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+    const [isOpponentConnected, setIsOpponentConnected] = useState(true);
 
     const [gameOver, setGameOver] = useState<{
         result: "white_win" | "black_win" | "draw";
@@ -157,6 +158,12 @@ const GamePage = () => {
                     setGameOver({ result: msg.result, winner: msg.winner });
                     localStorage.removeItem('matchInfo');
                     break;
+                case "OPPONENT_DISCONNECTED":
+                    setIsOpponentConnected(false);
+                    break;
+                case "OPPONENT_RECONNECTED":
+                    setIsOpponentConnected(true);
+                    break;
             }
         };
 
@@ -220,7 +227,7 @@ const GamePage = () => {
 
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
-                <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} />
+                <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
                 <OverlayEffects />
             </div>
 
