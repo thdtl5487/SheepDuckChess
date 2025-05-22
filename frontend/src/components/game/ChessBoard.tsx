@@ -568,10 +568,10 @@ const ChessBoard = ({
                         const skinId = skinSet[propName];
                         const flag = piece.color === 'white' ? 1 : 0;
 
-                        const PIECE_SIZE = 56;
+                        const PIECE_SIZE = 64;
                         const offset = (squareSize - PIECE_SIZE) / 2;
 
-                        const pieceUrl = `/asset/PieceImage/${skinId}_${flag}.png`;
+                        const pieceUrl = `/asset/PieceImage/${skinId}_${flag}.gif`;
                         const isBouncing = bouncePos === piece.position;
 
                         return isMovedPiece
@@ -582,14 +582,14 @@ const ChessBoard = ({
                                     initial={{ x: fromCoords.x + offset, y: fromCoords.y + offset }}
                                     animate={{ x: toCoords.x + offset, y: toCoords.y + offset }}
                                     transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    className={`piece absolute w-[64px] h-[64px] flex items-center justify-center text-5xl text-${piece.color}`}
                                     style={{ pointerEvents: "none", backgroundImage: `url(${pieceUrl})` }}
                                 >
                                 </motion.div>
                             ) : (
                                 <motion.div
                                     key={i}
-                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
+                                    className={`piece absolute w-[64px] h-[64px] flex items-center justify-center`}
                                     style={{ left: x + offset, top: y + offset, pointerEvents: "none", backgroundImage: `url(${pieceUrl})` }}
                                     animate={isBouncing ? { scale: [1, 1.2, 1] } : {}}
                                     transition={{ duration: 0.1 }}
