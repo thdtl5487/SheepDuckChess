@@ -657,20 +657,20 @@ const ChessBoard = ({
             </div>
 
             {/** ———————————— 감정 연출 ———————————— **/}
-            {/* 내 쪽(우측)에 내 감정 */}
+            {/* 내 쪽(좌측)에 내 감정 */}
             <EmotionOverlay
                 pieces={pieces}
                 characterColor={myColor}
                 skinId={userSkinId.character_id}
-                side="left"
+                side="right"
                 isOpponentConnected={true}
             />
-            {/* 상대 쪽(좌측)에 상대 감정, 좌우 반전 적용 */}
+            {/* 상대(우측) */}
             <EmotionOverlay
                 pieces={pieces}
                 characterColor={myColor === "white" ? "black" : "white"}
                 skinId={opponentSkinId.character_id}
-                side="right"
+                side="left"
                 isOpponentConnected={isOpponentConnected}
             />
         </>

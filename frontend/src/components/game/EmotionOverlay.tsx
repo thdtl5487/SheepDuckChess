@@ -35,7 +35,7 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
   // 해당 캐릭터의 점수 차이
   const myScore = characterColor === 'white' ? whiteScore : blackScore;
   const oppScore = characterColor === 'white' ? blackScore : whiteScore;
-  const diff = myScore - oppScore;
+  const diff = oppScore - myScore;
   const stateNum = getStateNum(diff);
 
   // 파일명 포맷: {skinId}_{stateNum}.gif
