@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import IngameAlertModal from "./IngameAlertModal";
 import EmotionOverlay from "../game/EmotionOverlay";
 import { SkinSetting } from "../../types/matchInfo";
+import { useBoardSize } from "../../hooks/useBoardSize";
+import { useTurnSender } from "../../hooks/useTurnSender";
 
 // const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
 const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
@@ -134,19 +136,10 @@ const ChessBoard = ({
     const [bouncePos, setBouncePos] = useState<string | null>(null);
 
     const boardRef = useRef<HTMLDivElement>(null);
-    const [squareSize, setSquareSize] = useState(60);
 
-    useLayoutEffect(() => {
-        function updateSize() {
-            if (boardRef.current) {
-                const w = boardRef.current.clientWidth;
-                setSquareSize(w / 8);
-            }
-        }
-        updateSize();
-        window.addEventListener("resize", updateSize);
-        return () => window.removeEventListener("resize", updateSize);
-    }, []);
+    // 훅 호출
+    const squareSize = useBoardSize(boardRef);
+    const { sendTurn } = useTurnSender(socket, gameId);
 
     // 체스 좌표를 x/y 픽셀 좌표로 변환하는 함수 (isFlipped: 아래가 내 진영인지 여부)
     function positionToCoords(pos: string, flipped = false) {
@@ -174,23 +167,6 @@ const ChessBoard = ({
         }
         return true;
     }
-
-    // 체크메이트 테스트 코드
-    // useEffect(() => {
-    //     setPieces([
-    //         // 🟥 흑 킹 - 구석에 몰려있음
-    //         { type: "king", color: "black", position: "e8" },
-
-    //         // ✅ 체크 유발용 흰색 킹
-    //         { type: "king", color: "white", position: "e1" },
-
-    //         // 🧱 흑 기물들 - 도망갈 길 차단
-    //         { type: "rook", color: "black", position: "a8" },
-    //         { type: "rook", color: "black", position: "h8" },
-    //         { type: "rook", color: "white", position: "b1" },
-    //     ]);
-    //     setTurn("white"); // 흑이 먼저 d7 → d5로 더블스텝 해야 함
-    // }, []);
 
     useEffect(() => {
         // ✅ null이면 패스
@@ -338,15 +314,8 @@ const ChessBoard = ({
                         setSelectedPos(null);
                         setHighlightSquares([]);
                         setCaptureSquares([]);
-                        console.log("턴무브 보낼게요요요");
                         if (canSendTurn(socket)) {
-                            console.log("턴무브 보낸다잉??");
-                            socket.send(JSON.stringify({
-                                type: "TURN_MOVE",
-                                gameId,
-                                from: selectedPos,
-                                to: pos,
-                            }));
+                            sendTurn(selectedPos, pos);
                         }
                         setTurn(prev => (prev === "white" ? "black" : "white"));
                     }
@@ -373,7 +342,6 @@ const ChessBoard = ({
                         }
                         if (ChessRules.isCheckmate(nextTurn, simulatedBoard)) {
                             console.log("🏁 앙파상 체크메이트입니다!");
-                            // 👉 이후: 모달 띄우거나 게임 종료 처리
                         }
                         if (ChessRules.isStalemate(nextTurn, simulatedBoard)) {
                             console.log("🤝 앙파상 스테일메이트입니다 (무승부)");
@@ -394,18 +362,11 @@ const ChessBoard = ({
                         }));
                         console.log("턴무브 보낼게요요요");
                         if (canSendTurn(socket)) {
-                            console.log("턴무브 보낸다잉??");
-                            socket.send(JSON.stringify({
-                                type: "TURN_MOVE",
-                                gameId,
-                                from: selectedPos,
-                                to: pos,
-                            }));
+                            sendTurn(selectedPos, pos);
                             return;
                         }
                         setTurn(prev => (prev === "white" ? "black" : "white"));
                     }
-
 
                     const movedPiece = { ...selectedPiece, position: pos };
 
@@ -467,17 +428,9 @@ const ChessBoard = ({
                     if (ChessRules.isInsufficientMaterial(simulatedBoard)) {
                         console.log("🤝 기물 부족 무승부 (킹만 남음)");
                     }
-                    console.log("턴무브 보낼게요요요");
 
                     if (canSendTurn(socket)) {
-                        console.log("턴무브 보낸다잉??");
-                        socket.send(JSON.stringify({
-                            type: "TURN_MOVE",
-                            gameId,
-                            from: selectedPos,
-                            to: pos,
-                        }));
-                        console.log("턴무브 보냈따이");
+                        sendTurn(selectedPos, pos);
                     }
                     setTurn(prev => (prev === "white" ? "black" : "white"));
                 }
@@ -572,14 +525,6 @@ const ChessBoard = ({
                                     onClick={() => {
                                         handleSquareClick(pos);
                                     }}
-                                    //                             className={`
-                                    //                                     absolute
-                                    //                                     cursor-pointer border
-                                    //                                     ${pos === selectedPos ? 'border-yellow-400 border-2'
-                                    //                                     : captureSquares.includes(pos) ? 'border-red-500 border-2'
-                                    //                                         : highlightSquares.includes(pos) ? 'border-blue-400 border-2'
-                                    //                                             : 'border-transparent'}
-                                    // `}
                                     className={
                                         `moveIndicate ${isHighlight ? "highlight" : captureSquares.includes(pos) ? "captureSquares" : ""}`
                                     }
@@ -630,29 +575,27 @@ const ChessBoard = ({
                         const isBouncing = bouncePos === piece.position;
 
                         return isMovedPiece
-                        ?
-                        (
-                            <motion.div
-                                key={piece.position}
-                                initial={{ x: fromCoords.x + offset, y: fromCoords.y+offset }}
-                                animate={{ x: toCoords.x + offset, y: toCoords.y + offset}}
-                                transition={{ type: isKnight ? "spring" : "tween", duration }}
-                                className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
-                                style={{ pointerEvents: "none", backgroundImage: `url(${pieceUrl}` }}
-                            >
-                                {/* {pieceIcons[piece.color][piece.type]} */}
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key={i}
-                                className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
-                                style={{ left: x +offset, top: y+offset, pointerEvents: "none", backgroundImage: `url(${pieceUrl}` }}
-                                animate={isBouncing? {scale: [1, 1.2, 1]} : {}}
-                                transition={{duration: 0.1}}
-                            >
-                                {/* {pieceIcons[piece.color][piece.type]} */}
-                            </motion.div>
-                        );
+                            ?
+                            (
+                                <motion.div
+                                    key={piece.position}
+                                    initial={{ x: fromCoords.x + offset, y: fromCoords.y + offset }}
+                                    animate={{ x: toCoords.x + offset, y: toCoords.y + offset }}
+                                    transition={{ type: isKnight ? "spring" : "tween", duration }}
+                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center text-5xl text-${piece.color}`}
+                                    style={{ pointerEvents: "none", backgroundImage: `url(${pieceUrl})` }}
+                                >
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key={i}
+                                    className={`piece absolute w-[56px] h-[56px] flex items-center justify-center`}
+                                    style={{ left: x + offset, top: y + offset, pointerEvents: "none", backgroundImage: `url(${pieceUrl})` }}
+                                    animate={isBouncing ? { scale: [1, 1.2, 1] } : {}}
+                                    transition={{ duration: 0.1 }}
+                                >
+                                </motion.div>
+                            );
                     })}
 
                     {/*게임 종료 모달*/}
@@ -703,16 +646,8 @@ const ChessBoard = ({
                                 setPieces(simulatedBoard);
                                 setPromotionTarget(null);
                                 setPromotionSource(null);
-                                console.log("턴무브 보낼게요요요");
-
                                 if (canSendTurn(socket)) {
-                                    console.log("턴무브 보낸다잉??");
-                                    socket.send(JSON.stringify({
-                                        type: "TURN_MOVE",
-                                        gameId,
-                                        from: promotionSource!,
-                                        to: promotionTarget.position,
-                                    }));
+                                    sendTurn(promotionSource!, promotionTarget.position);
                                 }
                                 setTurn(nextTurn);
                             }}
