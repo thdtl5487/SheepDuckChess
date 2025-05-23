@@ -1,5 +1,5 @@
 // ChessSession.ts
-import { Piece } from "../types/pieces";
+import { Piece, PieceType } from "../types/pieces";
 import {
     initialBoard,
     isValidMove,
@@ -138,7 +138,7 @@ export class ChessSession {
         this.broadcast({
             type: "OPPONENT_RECONNECTED",
         })
-        
+
         // (재)접속 시점마다 재접속한 소켓에 현재 보드 상태만 보내 줌
         const initState = {
             type: "TURN_RESULT",      // 기존 TURN_RESULT 로 통일
@@ -148,7 +148,7 @@ export class ChessSession {
             lastMove: this.lastMove,               // 초기 상태엔 마지막 수 없으니 null
             captured: false               // 캡처 이벤트 아님
         };
-        console.log(initState);
+        console.log('initState : ',initState);
         socket.send(JSON.stringify(initState));
 
         socket.on("close", () => {
@@ -178,7 +178,7 @@ export class ChessSession {
         };
     }
 
-    applyMove(from: string, to: string): { success: boolean; log?: string } {
+    applyMove(from: string, to: string, promotion: PieceType | null = null): { success: boolean; log?: string } {
         if (this.result !== "ongoing") return { success: false };
 
         const piece = this.pieces.find(p => p.position === from);
@@ -253,9 +253,11 @@ export class ChessSession {
                 this.pieces = this.pieces.filter(p => p.position !== from && p.position !== to);
             }
 
+            console.log("Promotion 타겟 기물 : ", promotion);
+
             // 프로모션
             const promoted = (piece.type === "pawn" && (to[1] === "8" || to[1] === "1"))
-                ? promote(piece, "queen") // TODO: 사용자 선택으로 변경
+                ? promote(piece, promotion!) // TODO: 사용자 선택으로 변경
                 : { ...piece };
 
             promoted.position = to;
@@ -280,7 +282,7 @@ export class ChessSession {
             const draw = isStalemate(nextTurn, board) || isInsufficientMaterial(board);
             const log = formatMoveLog(piece, from, to, board, check, mate);
 
-            console.log("piece : ", piece);
+            // console.log("piece : ", piece);
 
             this.logs.push(log);
 

@@ -1,4 +1,4 @@
-import { Piece } from "../types/pieces";
+import { Piece, PieceType } from "../types/pieces";
 
 const coordsToPosition = (file: number, rank: number, flipped = false): string => {
     const f = flipped ? 7 - file : file;
@@ -103,7 +103,8 @@ const isPromotionSquare = (piece: Piece): boolean => {
 };
 
 // 실제 승격은 외부에서 사용자가 선택한 기물로 type을 교체해야 함
-const promote = (piece: Piece, to: Piece["type"]): Piece => {
+const promote = (piece: Piece, to: PieceType): Piece => {
+    console.log("Promote to :", to);
     const validTypes: Piece["type"][] = ["queen", "rook", "bishop", "knight"];
     if (!validTypes.includes(to)) throw new Error("Invalid promotion piece type");
     return { ...piece, type: to }; // 기존 color와 position 유지

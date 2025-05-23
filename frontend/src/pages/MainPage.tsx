@@ -5,7 +5,7 @@ import { userState } from "../store/userState";
 import { ReactElement } from "react";
 import LogoutButton from "../components/btn_logout";
 import { api } from "../utills/api";
-import { useMatchSocket } from "../hooks/useMatchSocket";
+import { useMatchSocket } from "../hooks/inGame/useMatchSocket";
 import MatchOverlay from "../components/MatchOverlay";
 import { useSetRecoilState } from "recoil";
 import { matchInfoAtom } from "../types/matchInfo";

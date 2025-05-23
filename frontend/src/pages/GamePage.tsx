@@ -2,14 +2,15 @@ import { useRef, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 import { userAtom } from "../types/user";
-import { ChessBoard } from "../components/game/ChessBoard";
+import ChessBoard2 from "../components/game/ChessBoard2";
 import PlayerPanel from "../components/game/PlayerPanel";
 import GameLog from "../components/game/GameLog";
 import OverlayEffects from "../components/game/OverlayEffects";
 import { api } from "../utills/api";
 import { matchInfoAtom, MatchInfo } from "../types/matchInfo";
-import { useMatchSocket, MatchFoundPayload } from "../hooks/useMatchSocket";
+import { useMatchSocket, MatchFoundPayload } from "../hooks/inGame/useMatchSocket";
 import { gameURL } from "../utills/api";
+import { ChessBoard } from "../components/game/ChessBoard";
 
 const gameServerURL = gameURL;
 
@@ -227,7 +228,9 @@ const GamePage = () => {
 
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
-                <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
+                {/* <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} /> */}
+                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
+
                 <OverlayEffects />
             </div>
 

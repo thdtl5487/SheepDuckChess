@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { User } from "../types/user";
-import { SkinSetting } from "../types/matchInfo";
-import { matchURL } from "../utills/api";
+import { User } from "../../types/user";
+import { SkinSetting } from "../../types/matchInfo";
+import { matchURL } from "../../utills/api";
 
 const matchServerURL = matchURL;
 

@@ -25,7 +25,7 @@ wss.on("connection", (socket: ws.WebSocket) => {
 
     socket.on("message", (data) => {
         const msg = JSON.parse(data.toString());
-        console.log("message : ", msg);
+        // console.log("message : ", msg);
         if (msg.type === "JOIN_GAME") {
             console.log(`🔗 유저 ${msg.userId} 가 ${msg.gameId} 세션에 접속 시도`);
 
@@ -60,15 +60,16 @@ wss.on("connection", (socket: ws.WebSocket) => {
         }
 
         if (msg.type === "TURN_MOVE") {
-            console.log("메세지 왔어용!");
-            const { gameId, from, to } = msg;
+            const { gameId, from, to, promotion } = msg;
+
+            console.log("turn move - from : ", from , ", to : ", to, ", promotion : ", promotion)
 
             const session = sessionManager.getSession(gameId);
             if (!session) {
                 socket.send(JSON.stringify({ type: "ERROR", error: "Game not found" }));
                 return;
             }
-            session.applyMove(from, to);
+            session.applyMove(from, to, promotion);
         }
 
         if (msg.type === "GAME_START") {

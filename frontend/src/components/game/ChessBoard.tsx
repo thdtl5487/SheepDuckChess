@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom";
 import IngameAlertModal from "./IngameAlertModal";
 import EmotionOverlay from "../game/EmotionOverlay";
 import { SkinSetting } from "../../types/matchInfo";
-import { useBoardSize } from "../../hooks/useBoardSize";
-import { useTurnSender } from "../../hooks/useTurnSender";
+import { useBoardSize } from "../../hooks/inGame/useBoardSize";
+import { useTurnSender } from "../../hooks/inGame/useTurnSender";
 
 // const squareSize = 60; // 하나의 정사각형 칸 픽셀 크기
 const pieceIcons: Record<"white" | "black", Record<Piece["type"], string>> = {
@@ -315,7 +315,7 @@ const ChessBoard = ({
                         setHighlightSquares([]);
                         setCaptureSquares([]);
                         if (canSendTurn(socket)) {
-                            sendTurn(selectedPos, pos);
+                            sendTurn(selectedPos, pos, null);
                         }
                         setTurn(prev => (prev === "white" ? "black" : "white"));
                     }
@@ -647,7 +647,7 @@ const ChessBoard = ({
                                 setPromotionTarget(null);
                                 setPromotionSource(null);
                                 if (canSendTurn(socket)) {
-                                    sendTurn(promotionSource!, promotionTarget.position);
+                                    sendTurn(promotionSource!, promotionTarget.position, promoted.type);
                                 }
                                 setTurn(nextTurn);
                             }}
