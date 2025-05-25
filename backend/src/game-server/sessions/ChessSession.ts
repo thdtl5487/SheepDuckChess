@@ -315,7 +315,8 @@ export class ChessSession {
                 },
                 isCapture: isCapture,
                 attacker: piece.type,
-                victim: target?.type
+                victim: target?.type,
+                enPassantTarget: this.enPassantTarget
             });
 
             this.lastMove = { from, to, pieceType: piece.type };

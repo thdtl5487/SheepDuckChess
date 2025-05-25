@@ -77,8 +77,6 @@ const ChessBoard2 = ({
     // 체스판
     const boardGrid = boardTo2D(turnResult?.board || []);
 
-    console.log('boardGrid : ', boardGrid);
-
     const rows = isFlipped ? [...boardGrid].reverse() : boardGrid;
 
     // 반응형 처리 시작 ---
