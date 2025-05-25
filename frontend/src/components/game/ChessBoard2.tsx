@@ -13,6 +13,7 @@ import { useChessDrag } from "../../hooks/inGame/useDrag";
 import { useChessMove } from "../../hooks/inGame/useChessMove";
 import { PromotionModal } from "./PromotionModal";
 
+
 type GameOverType = { result: string; winner: "white" | "black" | null };
 
 const ChessBoard2 = ({
@@ -56,6 +57,128 @@ const ChessBoard2 = ({
     const [boardSizeType, setBoardSizeType] = useState<"pc" | "tablet" | "mobile">("pc");
     const [tileSize, setTileSize] = useState(pcTileSize);
     const [pieceSize, setPieceSize] = useState(pcPieceSize);
+
+    // 애니메이션 연출용 ---
+    const flatPieces = (turnResult?.board || []).filter(Boolean);
+
+    function posToCoords(pos: string, isFlipped: boolean) {
+        const file = pos.charCodeAt(0) - 97;
+        const rank = 8 - parseInt(pos[1]);
+        if (isFlipped) {
+            return [7 - file, 7 - rank];
+        } else {
+            return [file, rank];
+        }
+    }
+
+    // 드래그용 기능 정리
+    const [dragInfo, setDragInfo] = useState<{
+        from: [number, number];
+        piece: Piece;
+        startX: number;
+        startY: number;
+        mouseX: number;
+        mouseY: number;
+        mouseDownTime: number;
+        isDragging: boolean;
+    } | null>(null);
+    const dragInfoRef = useRef(dragInfo);
+    const [dragStart, setDragStart] = useState<{ x: number, y: number, piece: Piece, from: [number, number] } | null>(null);
+    const [mouseDownTime, setMouseDownTime] = useState<number>(0);
+
+    // dragInfo가 바뀔 때마다 ref도 업데이트
+    useEffect(() => {
+        dragInfoRef.current = dragInfo;
+    }, [dragInfo]);
+
+    const isMyPiece = dragInfo?.piece.color === myColor;
+    const skinSetting = isMyPiece ? userSkinId : opponentSkinId;
+
+    function onPieceMouseDown(
+        e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+        x: number,
+        y: number,
+        piece: Piece
+    ) {
+        e.stopPropagation();
+        handlePieceClick(x, y, piece);
+        setDragInfo({
+            from: [x, y],
+            piece,
+            startX: e.clientX,
+            startY: e.clientY,
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            mouseDownTime: Date.now(),
+            isDragging: false,
+        });
+        window.addEventListener("mousemove", handleDragMove);
+        window.addEventListener("mouseup", handleDragEnd);
+    }
+    function handleDragMove(e: MouseEvent) {
+        setDragInfo(prev => {
+            if (!prev) return null;
+            const dx = Math.abs(e.clientX - prev.startX);
+            const dy = Math.abs(e.clientY - prev.startY);
+            // 만약 4px 이상 이동했다면 드래그로 간주
+            const DRAG_THRESHOLD = 4;
+            if (!prev.isDragging && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
+                return { ...prev, isDragging: true, mouseX: e.clientX, mouseY: e.clientY };
+            }
+            if (prev.isDragging) {
+                return { ...prev, mouseX: e.clientX, mouseY: e.clientY };
+            }
+            // 아직 임계값 안 넘었으면 그대로
+            return prev;
+        });
+    }
+
+    function cleanupDrag() {
+        setDragStart(null);
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
+    }
+    // handleDragEnd 수정
+    function handleDragEnd(e: MouseEvent) {
+        const currDrag = dragInfoRef.current;
+        if (!currDrag) { cleanupDrag(); return; }
+
+        const { startX, startY, mouseDownTime, isDragging, from, piece } = currDrag;
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        const dt = Date.now() - mouseDownTime;
+
+        if (!isDragging && dx < 5 && dy < 5 && dt < 500) {
+            // "클릭"으로 간주!
+            handlePieceClick(from[0], from[1], piece);
+        } else if (isDragging) {
+            // "드래그"로 간주
+            const boardRect = boardRef.current?.getBoundingClientRect();
+            if (!boardRect) { cleanupDrag(); return; }
+            const relX = e.clientX - boardRect.left;
+            const relY = e.clientY - boardRect.top;
+            const toX = Math.floor(relX / tileSize);
+            const toY = Math.floor(relY / tileSize);
+            if (toX >= 0 && toX < 8 && toY >= 0 && toY < 8) {
+                handlePieceMove(from, [toX, toY], piece);
+            }
+        }
+        cleanupDrag();
+    }
+
+    function posToXY(pos: string, isFlipped: boolean): [number, number] {
+        // pos는 예를 들어 "e4"
+        const file = pos.charCodeAt(0) - 97;       // "a"=0, ..., "h"=7
+        const rank = 8 - parseInt(pos[1]);         // "1"=7, "8"=0
+        // isFlipped면 좌우상하 반전
+        return isFlipped
+            ? [7 - file, 7 - rank]
+            : [file, rank];
+    }
+
+    // 드래그 끝
+
+
 
     const boardRef = useRef<HTMLDivElement>(null);
     const {
@@ -125,6 +248,7 @@ const ChessBoard2 = ({
             </div>
             {/* 체스판 */}
             <div className="chess-board"
+                ref={boardRef}
                 style={{
                     width: tileSize * 8,
                     height: tileSize * 8,
@@ -183,37 +307,119 @@ const ChessBoard2 = ({
                                     }
                                 }}
                             >
-                                {piece && (
-                                    <img
-                                        src={getPieceImage(piece, skinSetting)}
-                                        style={{
-                                            width: pieceSize,
-                                            height: pieceSize,
-                                            userSelect: "none",
-                                            pointerEvents: "none",
-                                            display: "block",
-                                            margin: "0 auto",
-                                        }}
-                                        draggable={false}
-                                        alt={`${piece.color} ${piece.type}`}
-                                    />
-                                )}
                             </div>
                         );
                     });
                 })}
+
+                {/* 기물 렌더 */}
+                {flatPieces.map((piece: Piece) => {
+                    const [boardX, boardY] = posToXY(piece.position, isFlipped);
+                    if (
+                        dragInfo &&
+                        dragInfo.piece.position === piece.position &&
+                        dragInfo.piece.type === piece.type &&
+                        dragInfo.piece.color === piece.color
+                    ) {
+                        return null; // 잡은 건 아래에서 따로 그림
+                    }
+                    // 이동중 기물 여부
+                    const isMovedPiece =
+                        turnResult?.lastMove?.to === piece.position;
+
+                    // from→to 좌표 (절대 px)
+                    const [toX, toY] = posToCoords(piece.position, isFlipped);
+                    const tilePx = tileSize; // 칸 사이즈
+                    let fromX = toX, fromY = toY;
+                    if (isMovedPiece && turnResult?.lastMove?.from) {
+                        [fromX, fromY] = posToCoords(turnResult.lastMove.from, isFlipped);
+                    }
+
+                    // 스킨/이미지
+                    let skinSetting: SkinSetting = userSkinId;
+                    if (piece.color !== myColor) skinSetting = opponentSkinId;
+                    const imgUrl = getPieceImage(piece, skinSetting);
+
+                    return (
+                        <motion.div
+                            key={piece.position + piece.type + piece.color}
+                            initial={{ x: fromX * tilePx, y: fromY * tilePx }}
+                            animate={{ x: toX * tilePx, y: toY * tilePx }}
+                            transition={{ duration: isMovedPiece ? 0.3 : 0 }}
+                            style={{
+                                position: "absolute",
+                                width: pieceSize,
+                                height: pieceSize,
+                                zIndex: 10,
+                                opacity:
+                                    dragInfo &&
+                                        dragInfo.piece.position === piece.position &&
+                                        dragInfo.piece.type === piece.type &&
+                                        dragInfo.piece.color === piece.color
+                                        ? 0.5
+                                        : 1,
+                                pointerEvents: dragInfo ? "auto" : "auto", // 항상 auto로 둬야 mouseDown됨!
+                            }}
+                            onMouseDown={e => onPieceMouseDown(e, boardX, boardY, piece)}
+                        >
+                            <img
+                                src={imgUrl}
+                                style={{
+                                    width: pieceSize,
+                                    height: pieceSize,
+                                    userSelect: "none",
+                                    pointerEvents: "none",
+                                    display: "block",
+                                    margin: "0 auto",
+                                }}
+                                draggable={false}
+                                alt={`${piece.color} ${piece.type}`}
+                            />
+                        </motion.div>
+                    );
+                })}
+                {dragInfo && (
+                    <motion.div
+                        style={{
+                            position: "fixed",
+                            pointerEvents: "none",
+                            zIndex: 999,
+                            left: dragInfo.mouseX - pieceSize / 2,
+                            top: dragInfo.mouseY - pieceSize / 2,
+                            width: pieceSize * 1.15,
+                            height: pieceSize * 1.15,
+                            opacity: 0.95,
+                            transform: "scale(1.08)"
+                        }}
+                    >
+                        <img
+                            src={getPieceImage(dragInfo.piece, skinSetting)}
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                                userSelect: "none",
+                            }}
+                            draggable={false}
+                            alt="dragging"
+                        />
+                    </motion.div>
+                )}
+                {/* 기물 렌더 END */}
+
             </div>
             {/* EmotionOverlay (오른쪽) */}
             <div style={{ width: tileSize * 2, height: tileSize * 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {/* <EmotionOverlay ... /> */}
             </div>
-            {promotionInfo && (
-                <PromotionModal
-                    color={promotionInfo.piece.color}
-                    onSelect={handlePromotion}
-                />
-            )}
-        </div>
+            {
+                promotionInfo && (
+                    <PromotionModal
+                        color={promotionInfo.piece.color}
+                        onSelect={handlePromotion}
+                    />
+                )
+            }
+        </div >
     );
 }
 

@@ -29,7 +29,7 @@ const GamePage = () => {
     const [user, setUser] = useRecoilState(userAtom);
     const matchInfo = useRecoilValue(matchInfoAtom);
 
-    console.log("matchInfo : ", matchInfo);
+    // console.log("matchInfo : ", matchInfo);
     // 매치 완료 후 리코일에 저장
 
     useMatchSocket(
@@ -149,7 +149,7 @@ const GamePage = () => {
 
         ws.onmessage = evt => {
             const msg = JSON.parse(evt.data);
-            console.log("message : ", msg);
+            // console.log("message : ", msg);
 
             switch (msg.type) {
                 case "TURN_RESULT":

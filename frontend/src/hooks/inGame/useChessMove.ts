@@ -60,8 +60,6 @@ export function useChessMove({
         const moved = turnResult.moved || {};
         const enPassantTarget = turnResult.enPassantTarget || null;
 
-        console.log('앙파상타겟 : ', enPassantTarget)
-
         // 이동 가능 칸 계산
         const moves: [number, number][] = [];
         for (let ty = 0; ty < 8; ty++) {
