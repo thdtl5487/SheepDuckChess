@@ -226,6 +226,7 @@ export class ChessSession {
             }
             this.logs.push(log);
             this.turn = nextTurn;
+            console.log(`from : ${from}, to : ${to}`)
             this.broadcast({
                 type: "TURN_RESULT",
                 log,

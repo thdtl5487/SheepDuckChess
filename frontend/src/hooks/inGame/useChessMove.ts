@@ -8,6 +8,7 @@ type UseChessMoveProps = {
     myColor: "white" | "black";
     socket: WebSocket | null;
     gameId: string;
+    isFlipped: boolean
 };
 
 export function useChessMove({
@@ -15,6 +16,7 @@ export function useChessMove({
     myColor,
     socket,
     gameId,
+    isFlipped
 }: UseChessMoveProps) {
     const [selectedPiece, setSelectedPiece] = useState<[number, number] | null>(null);
     const [highlightedSquares, setHighlightedSquares] = useState<[number, number][]>([]);
@@ -25,38 +27,30 @@ export function useChessMove({
     } | null>(null);
     const { sendTurn } = useTurnSender(socket, gameId);
 
+
+
     // 기물 클릭 (선택/이동/하이라이트)
     function handlePieceClick(x: number, y: number, piece: Piece | null) {
-        if (!turnResult || !turnResult.turn) return; // turnResult가 없으면 무시!
+        if (!turnResult || !turnResult.turn) return;
         if (turnResult.turn !== myColor) return;
 
-        if (!piece) {
+        if (!piece || piece.color !== myColor) {
             setSelectedPiece(null);
             setHighlightedSquares([]);
             return;
         }
-        if (selectedPiece && selectedPiece[0] === x && selectedPiece[1] === y) {
-            setSelectedPiece(null);
-            setHighlightedSquares([]);
-            return;
-        }
+
+        // 화면 좌표 → 체스 좌표 변환(안 써도 됨. 아래는 설명용)
+        const boardX = isFlipped ? 7 - x : x;
+        const boardY = isFlipped ? 7 - y : y;
+
+
+        // position(예: "a2")로 찾자
+        const type = piece.type;
+        const color = piece.color;
+        const from = piece.position; // 현재 정상
         setSelectedPiece([x, y]);
 
-        // 변환 함수: (x, y) → 체스 좌표 ("e2" 등)
-        function xyToSquare(x: number, y: number) {
-            const file = "abcdefgh"[x];
-            const rank = 8 - y; // y:0이 8번째 rank
-            return `${file}${rank}`;
-        }
-        const from = xyToSquare(x, y);
-
-        // Piece 타입/컬러 구하기
-        // turnResult.board가 2차원 배열이라면:
-        const thisPiece = turnResult.board[y][x];
-        const type = thisPiece?.type || piece.type; // piece가 객체면 그대로, 아니면 type 값 넣기
-        const color = thisPiece?.color || piece.color;
-
-        // moved, enPassantTarget 추출
         const moved = turnResult.moved || {};
         const enPassantTarget = turnResult.enPassantTarget || null;
 
@@ -64,19 +58,22 @@ export function useChessMove({
         const moves: [number, number][] = [];
         for (let ty = 0; ty < 8; ty++) {
             for (let tx = 0; tx < 8; tx++) {
-                if (tx === x && ty === y) continue;
-                const to = xyToSquare(tx, ty);
+                // 화면 좌표 → 체스 position
+                const to = "abcdefgh"[tx] + (8 - ty);
+                if (to === from) continue;
+
                 if (
                     ChessRules.isValidMove(
                         from,
                         to,
                         type,
                         color,
-                        turnResult.board.flat(), // 2차원 -> 1차원 flatten
+                        turnResult.board,
                         moved,
                         enPassantTarget
                     )
                 ) {
+                    // 하이라이트 좌표도 화면 기준 그대로 push
                     moves.push([tx, ty]);
                 }
             }
@@ -84,18 +81,19 @@ export function useChessMove({
         setHighlightedSquares(moves);
     }
 
-    // 실제 이동(서버 전송 등)
 
+    // 실제 이동(서버 전송 등)
     function xyToSquare(x: number, y: number) {
-        const file = "abcdefgh"[x];
-        const rank = 8 - y;
+        const boardX = isFlipped ? 7 - x : x;
+        const boardY = isFlipped ? 7 - y : y;
+        const file = "abcdefgh"[boardX];
+        const rank = 8 - boardY;
         return `${file}${rank}`;
     }
 
     function handlePromotion(type: PieceType) {
         if (!promotionInfo) return;
 
-        console.log("promotion type : ", type);
         const fromPos = xyToSquare(promotionInfo.from[0], promotionInfo.from[1]);
         const toPos = xyToSquare(promotionInfo.to[0], promotionInfo.to[1]);
         sendTurn(fromPos, toPos, type);
@@ -107,11 +105,10 @@ export function useChessMove({
     function handlePieceMove(
         from: [number, number],
         to: [number, number],
-        piece: Piece
+        piece: Piece,
     ) {
         const fromPos = xyToSquare(from[0], from[1]);
         const toPos = xyToSquare(to[0], to[1]);
-
         // 이동 후 위치로 임시 Piece 객체를 만들어서 프로모션 체크
         const tempPiece: Piece = { ...piece, position: toPos };
         let promotion: Piece | null = null;

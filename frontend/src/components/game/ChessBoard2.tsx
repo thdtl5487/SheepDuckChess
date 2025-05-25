@@ -100,7 +100,9 @@ const ChessBoard2 = ({
         y: number,
         piece: Piece
     ) {
+        if(piece.color != myColor) return;
         e.stopPropagation();
+        e.preventDefault();    // ←★ 이거 필수!
         handlePieceClick(x, y, piece);
         setDragInfo({
             from: [x, y],
@@ -135,6 +137,7 @@ const ChessBoard2 = ({
 
     function cleanupDrag() {
         setDragStart(null);
+        setDragInfo(null);
         window.removeEventListener("mousemove", handleDragMove);
         window.removeEventListener("mouseup", handleDragEnd);
     }
@@ -171,14 +174,11 @@ const ChessBoard2 = ({
         const file = pos.charCodeAt(0) - 97;       // "a"=0, ..., "h"=7
         const rank = 8 - parseInt(pos[1]);         // "1"=7, "8"=0
         // isFlipped면 좌우상하 반전
-        return isFlipped
-            ? [7 - file, 7 - rank]
-            : [file, rank];
+        const result = isFlipped ? [7 - file, 7 - rank] : [file, rank];
+        return isFlipped ? [7 - file, 7 - rank] : [file, rank];;
     }
 
     // 드래그 끝
-
-
 
     const boardRef = useRef<HTMLDivElement>(null);
     const {
@@ -195,6 +195,7 @@ const ChessBoard2 = ({
         myColor,
         socket,
         gameId,
+        isFlipped
     });
 
     // 체스판
@@ -264,13 +265,14 @@ const ChessBoard2 = ({
                         // 실제 체스 규칙에서 사용하는 원본 인덱스 계산
                         const boardX = isFlipped ? 7 - x : x;
                         const boardY = isFlipped ? 7 - y : y;
+                        const [toClickX, toClickY] = posToXY(`${"abcdefgh"[boardX]}${8 - boardY}`, isFlipped);
 
                         let boardSkinId = userSkinId.board_skin;
                         const isMyHalf = myColor === "white" ? boardY >= 4 : boardY < 4;
                         if (!isMyHalf) boardSkinId = opponentSkinId.board_skin;
 
                         // 타일 이미지
-                        const isDark = (boardX + boardY) % 2 === 0 ? 0 : 1;
+                        const isDark = (boardX + boardY) % 2 === 0 ? 1 : 0;
                         const tileImg = `/asset/BoardImage/${boardSkinId}_${isDark}.png`;
 
                         let skinSetting: SkinSetting = userSkinId;
@@ -288,7 +290,6 @@ const ChessBoard2 = ({
                                     width: tileSize,
                                     height: tileSize,
                                     backgroundImage: `url(${tileImg})`,
-                                    // background: (x + y) % 2 === 0 ? "#f0d9b5" : "#b58863",
                                     border: isHighlighted ? "2px solid #ff0" : "1px solid #aaa",
                                     position: "relative",
                                     boxSizing: "border-box",
@@ -296,14 +297,19 @@ const ChessBoard2 = ({
                                     zIndex: 1,
                                 }}
                                 onClick={() => {
-                                    // selectedPiece는 화면상의 x, y를 저장/비교하도록!
-                                    const movingPiece = selectedPiece
-                                        ? boardGrid[selectedPiece[1]][selectedPiece[0]]
-                                        : null;
+                                    // selectedPiece는 화면상의 x, y를 저장/비교함
+                                    let movingPiece = null;
+                                    if (selectedPiece) {
+                                        const [selX, selY] = selectedPiece;
+                                        const realX = isFlipped ? 7 - selX : selX;
+                                        const realY = isFlipped ? 7 - selY : selY;
+                                        movingPiece = boardGrid[realY][realX];
+                                    }
+
                                     if (isHighlighted && selectedPiece && movingPiece) {
-                                        handlePieceMove(selectedPiece, [boardX, boardY], movingPiece);
+                                        handlePieceMove(selectedPiece, [toClickX, toClickY], movingPiece);
                                     } else {
-                                        handlePieceClick(boardX, boardY, piece);
+                                        handlePieceClick(toClickX, toClickY, piece);
                                     }
                                 }}
                             >
@@ -314,7 +320,8 @@ const ChessBoard2 = ({
 
                 {/* 기물 렌더 */}
                 {flatPieces.map((piece: Piece) => {
-                    const [boardX, boardY] = posToXY(piece.position, isFlipped);
+                    const [x, y] = posToXY(piece.position, isFlipped);
+
                     if (
                         dragInfo &&
                         dragInfo.piece.position === piece.position &&
@@ -358,9 +365,12 @@ const ChessBoard2 = ({
                                         dragInfo.piece.color === piece.color
                                         ? 0.5
                                         : 1,
-                                pointerEvents: dragInfo ? "auto" : "auto", // 항상 auto로 둬야 mouseDown됨!
+                                pointerEvents: piece.color === myColor ? "auto" : "none",
                             }}
-                            onMouseDown={e => onPieceMouseDown(e, boardX, boardY, piece)}
+                            onMouseDown={e => {
+                                onPieceMouseDown(e, x, y, piece)
+                            }
+                            }
                         >
                             <img
                                 src={imgUrl}
