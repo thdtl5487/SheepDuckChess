@@ -25,6 +25,19 @@ const GamePage = () => {
 
     const [triggerQueue, setTriggerQueue] = useState(false);
 
+    const [overlay, setOverlay] = useState<{ attackerImage?: string; victimImage?: string; isVisible: boolean }>({
+        isVisible: false
+    });
+
+    function showCaptureEffect(attackerSkinId: number, victimSkinId: number) {
+        setOverlay({
+            attackerImage: `/asset/PieceAnime/${attackerSkinId}_attack.gif`,
+            victimImage: `/asset/PieceAnime/${victimSkinId}_hit.gif`,
+            isVisible: true,
+        });
+        setTimeout(() => setOverlay((prev) => ({ ...prev, isVisible: false })), 1000); // 1초 뒤 꺼짐
+    }
+
     // Recoil state
     const [user, setUser] = useRecoilState(userAtom);
     const matchInfo = useRecoilValue(matchInfoAtom);
@@ -229,9 +242,9 @@ const GamePage = () => {
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
                 {/* <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} /> */}
-                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
+                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinSetting={matchInfo?.userSkinSetting} opponentSkinSetting={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} onCapture={(attackerSkinId: number, victimSkinId: number) => showCaptureEffect(attackerSkinId, victimSkinId)} />
 
-                <OverlayEffects />
+                <OverlayEffects attackerImage={overlay.attackerImage} victimImage={overlay.victimImage} isVisible={overlay.isVisible} />
             </div>
 
             {/* 하단: 내 플레이어 패널 + 로그 */}

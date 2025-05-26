@@ -2,13 +2,17 @@ import { useState } from "react";
 import type { Piece, PieceType } from "../../types/piece";
 import * as ChessRules from "../../components/game/ChessRules";
 import { useTurnSender } from "./useTurnSender";
+import { SkinSetting } from "../../types/matchInfo";
 
 type UseChessMoveProps = {
     turnResult: any;
     myColor: "white" | "black";
     socket: WebSocket | null;
     gameId: string;
-    isFlipped: boolean
+    isFlipped: boolean;
+    onCapture?: (attackerSkinId: number, victimSkinId: number) => void;
+    userSkinSetting: SkinSetting;
+    opponentSkinSetting: SkinSetting;
 };
 
 export function useChessMove({
@@ -16,7 +20,10 @@ export function useChessMove({
     myColor,
     socket,
     gameId,
-    isFlipped
+    isFlipped,
+    onCapture,
+    userSkinSetting,
+    opponentSkinSetting
 }: UseChessMoveProps) {
     const [selectedPiece, setSelectedPiece] = useState<[number, number] | null>(null);
     const [highlightedSquares, setHighlightedSquares] = useState<[number, number][]>([]);
@@ -26,8 +33,6 @@ export function useChessMove({
         piece: Piece;
     } | null>(null);
     const { sendTurn } = useTurnSender(socket, gameId);
-
-
 
     // 기물 클릭 (선택/이동/하이라이트)
     function handlePieceClick(x: number, y: number, piece: Piece | null) {
@@ -39,11 +44,6 @@ export function useChessMove({
             setHighlightedSquares([]);
             return;
         }
-
-        // 화면 좌표 → 체스 좌표 변환(안 써도 됨. 아래는 설명용)
-        const boardX = isFlipped ? 7 - x : x;
-        const boardY = isFlipped ? 7 - y : y;
-
 
         // position(예: "a2")로 찾자
         const type = piece.type;
@@ -109,18 +109,37 @@ export function useChessMove({
     ) {
         const fromPos = xyToSquare(from[0], from[1]);
         const toPos = xyToSquare(to[0], to[1]);
-        // 이동 후 위치로 임시 Piece 객체를 만들어서 프로모션 체크
-        const tempPiece: Piece = { ...piece, position: toPos };
-        let promotion: Piece | null = null;
-        const samplePiece: PieceType = 'queen';
+
+        // --- 기물캡쳐 체크
+        const flatBoard = Array.isArray(turnResult.board[0])
+            ? turnResult.board.flat()
+            : turnResult.board;
+
+        // 캡처 대상 찾기
+        const targetPiece = flatBoard.find(p => p.position === toPos);
+
+        // 1. 캡처 상황이면 onCapture 콜백 호출 (prop으로 내려받아야 함)
+        if (targetPiece && targetPiece.color !== piece.color) {
+            // 예시: onCapture(attackerSkinId, victimSkinId, fromPos, toPos, piece, targetPiece)
+            if (typeof onCapture === "function") {
+                onCapture({
+                    attacker: userSkinSetting,
+                    victim: opponentSkinSetting,
+                });
+            }
+        }
+
+
+        // --- 프로모션 체크
+        let promotion: Piece = { ...piece, position: toPos };
 
         promotion = {
-            type: samplePiece,
+            type: promotion.type,
             color: piece.color,
             position: toPos
         }
 
-        if (ChessRules.isPromotionSquare(tempPiece)) {
+        if (ChessRules.isPromotionSquare(promotion)) {
             setPromotionInfo({ from, to, piece }); // from, to는 내부 x, y!
             return;
         }

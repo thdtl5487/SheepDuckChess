@@ -23,15 +23,16 @@ const ChessBoard2 = ({
     gameId,
     socket,
     gameOver,
-    userSkinId,
-    opponentSkinId,
+    userSkinSetting,
+    opponentSkinSetting,
     isOpponentConnected,
     pcTileSize = 64,
     mobileTileSize = 45,
     tabletTileSize = 64,
     pcPieceSize = 64,
     mobilePieceSize = 43,
-    tabletPieceSize = 59
+    tabletPieceSize = 59,
+    onCapture
 }: {
     isFlipped?: boolean;
     turnResult?: any;
@@ -42,8 +43,8 @@ const ChessBoard2 = ({
         result: 'white_win' | 'black_win' | 'draw';
         winner?: 'white' | 'black';
     } | null;
-    userSkinId: any;
-    opponentSkinId: any;
+    userSkinSetting: any;
+    opponentSkinSetting: any;
     isOpponentConnected: boolean;
     pcTileSize?: number;
     tabletTileSize?: number;
@@ -51,6 +52,7 @@ const ChessBoard2 = ({
     pcPieceSize?: number;
     tabletPieceSize?: number;
     mobilePieceSize?: number;
+    onCapture?:(attackerSkinId: number, victimSkinId: number)=> void;
 }) => {
 
     // 상태
@@ -95,7 +97,7 @@ const ChessBoard2 = ({
     }, [dragInfo]);
 
     const isMyPiece = dragInfo?.piece.color === myColor;
-    const skinSetting = isMyPiece ? userSkinId : opponentSkinId;
+    const skinSetting = isMyPiece ? userSkinSetting : opponentSkinSetting;
 
     function onPieceMouseDown(
         e: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -197,7 +199,10 @@ const ChessBoard2 = ({
         myColor,
         socket,
         gameId,
-        isFlipped
+        isFlipped,
+        onCapture,
+        userSkinSetting,
+        opponentSkinSetting
     });
 
     // 체스판
@@ -274,9 +279,9 @@ const ChessBoard2 = ({
                         const boardY = isFlipped ? 7 - y : y;
                         const [toClickX, toClickY] = posToXY(`${"abcdefgh"[boardX]}${8 - boardY}`, isFlipped);
 
-                        let boardSkinId = userSkinId.board_skin;
+                        let boardSkinId = userSkinSetting.board_skin;
                         const isMyHalf = myColor === "white" ? boardY >= 4 : boardY < 4;
-                        if (!isMyHalf) boardSkinId = opponentSkinId.board_skin;
+                        if (!isMyHalf) boardSkinId = opponentSkinSetting.board_skin;
 
                         // 타일 이미지
                         const isDark = (boardX + boardY) % 2 === 0 ? 1 : 0;
@@ -287,9 +292,9 @@ const ChessBoard2 = ({
                             : false;
 
 
-                        let skinSetting: SkinSetting = userSkinId;
+                        let skinSetting: SkinSetting = userSkinSetting;
 
-                        if (piece && piece.color !== myColor) skinSetting = opponentSkinId;
+                        if (piece && piece.color !== myColor) skinSetting = opponentSkinSetting;
 
                         // 하이라이트 계산
                         const isHighlighted = highlightedSquares.some(
@@ -372,8 +377,8 @@ const ChessBoard2 = ({
                     }
 
                     // 스킨/이미지
-                    let skinSetting: SkinSetting = userSkinId;
-                    if (piece.color !== myColor) skinSetting = opponentSkinId;
+                    let skinSetting: SkinSetting = userSkinSetting;
+                    if (piece.color !== myColor) skinSetting = opponentSkinSetting;
                     const imgUrl = getPieceImage(piece, skinSetting);
 
                     return (
