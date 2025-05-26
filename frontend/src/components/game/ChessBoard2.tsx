@@ -61,6 +61,9 @@ const ChessBoard2 = ({
     // 애니메이션 연출용 ---
     const flatPieces = (turnResult?.board || []).filter(Boolean);
 
+    if (turnResult)
+        console.log(`turnResult = `, turnResult);
+
     function posToCoords(pos: string, isFlipped: boolean) {
         const file = pos.charCodeAt(0) - 97;
         const rank = 8 - parseInt(pos[1]);
@@ -100,7 +103,7 @@ const ChessBoard2 = ({
         y: number,
         piece: Piece
     ) {
-        if(piece.color != myColor) return;
+        if (piece.color != myColor) return;
         e.stopPropagation();
         e.preventDefault();    // ←★ 이거 필수!
         handlePieceClick(x, y, piece);
@@ -174,7 +177,6 @@ const ChessBoard2 = ({
         const file = pos.charCodeAt(0) - 97;       // "a"=0, ..., "h"=7
         const rank = 8 - parseInt(pos[1]);         // "1"=7, "8"=0
         // isFlipped면 좌우상하 반전
-        const result = isFlipped ? [7 - file, 7 - rank] : [file, rank];
         return isFlipped ? [7 - file, 7 - rank] : [file, rank];;
     }
 
@@ -202,6 +204,11 @@ const ChessBoard2 = ({
     const boardGrid = boardTo2D(turnResult?.board || []);
 
     const rows = isFlipped ? [...boardGrid].reverse() : boardGrid;
+
+    const lastMoveFromXY =
+        turnResult && turnResult.lastMove && turnResult.lastMove.from
+            ? posToXY(turnResult.lastMove.from, false)
+            : null;
 
     // 반응형 처리 시작 ---
     useEffect(() => {
@@ -275,6 +282,11 @@ const ChessBoard2 = ({
                         const isDark = (boardX + boardY) % 2 === 0 ? 1 : 0;
                         const tileImg = `/asset/BoardImage/${boardSkinId}_${isDark}.png`;
 
+                        const isLastMoveFrom = lastMoveFromXY
+                            ? (boardX === lastMoveFromXY[0] && boardY === lastMoveFromXY[1])
+                            : false;
+
+
                         let skinSetting: SkinSetting = userSkinId;
 
                         if (piece && piece.color !== myColor) skinSetting = opponentSkinId;
@@ -313,6 +325,23 @@ const ChessBoard2 = ({
                                     }
                                 }}
                             >
+                                {/* 효과 오버레이 */}
+                                {isLastMoveFrom && (
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            left: 0,
+                                            top: 0,
+                                            width: "100%",
+                                            height: "100%",
+                                            background: "rgba(255,170,70)", // 예시: 연한 빨강 반투명
+                                            // borderRadius: 8, // 둥글게, 필요시
+                                            pointerEvents: "none", // 클릭방해 X
+                                            zIndex: 2,
+                                            mixBlendMode: "multiply", // or "color" or "overlay" 등 다양하게 실험 가능
+                                        }}
+                                    />
+                                )}
                             </div>
                         );
                     });
