@@ -62,10 +62,6 @@ const ChessBoard2 = ({
 
     // 애니메이션 연출용 ---
     const flatPieces = (turnResult?.board || []).filter(Boolean);
-
-    if (turnResult)
-        console.log(`turnResult = `, turnResult);
-
     function posToCoords(pos: string, isFlipped: boolean) {
         const file = pos.charCodeAt(0) - 97;
         const rank = 8 - parseInt(pos[1]);

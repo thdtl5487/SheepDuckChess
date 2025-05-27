@@ -116,16 +116,20 @@ export function useChessMove({
             : turnResult.board;
 
         // 캡처 대상 찾기
-        const targetPiece = flatBoard.find(p => p.position === toPos);
+        const targetPiece = flatBoard.find((p: Piece) => p.position === toPos);
 
         // 1. 캡처 상황이면 onCapture 콜백 호출 (prop으로 내려받아야 함)
         if (targetPiece && targetPiece.color !== piece.color) {
             // 예시: onCapture(attackerSkinId, victimSkinId, fromPos, toPos, piece, targetPiece)
             if (typeof onCapture === "function") {
-                onCapture({
-                    attacker: userSkinSetting,
-                    victim: opponentSkinSetting,
-                });
+
+                const attackerSkinId = userSkinSetting[`piece_skin_${piece.type}` as keyof SkinSetting];
+                const victimSkinId = opponentSkinSetting[`piece_skin_${targetPiece.type}` as keyof SkinSetting];
+
+                onCapture(
+                    attackerSkinId,
+                    victimSkinId,
+                );
             }
         }
 

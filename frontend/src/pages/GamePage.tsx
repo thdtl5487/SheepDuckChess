@@ -10,6 +10,7 @@ import { api } from "../utills/api";
 import { matchInfoAtom, MatchInfo } from "../types/matchInfo";
 import { useMatchSocket, MatchFoundPayload } from "../hooks/inGame/useMatchSocket";
 import { gameURL } from "../utills/api";
+import { useAnimationMeta } from "../hooks/inGame/useAnimationMeta";
 import { ChessBoard } from "../components/game/ChessBoard";
 
 const gameServerURL = gameURL;
@@ -24,18 +25,29 @@ const GamePage = () => {
     const setMatchInfo = useSetRecoilState(matchInfoAtom);
 
     const [triggerQueue, setTriggerQueue] = useState(false);
+    const { getMeta, loading } = useAnimationMeta();
+
 
     const [overlay, setOverlay] = useState<{ attackerImage?: string; victimImage?: string; isVisible: boolean }>({
         isVisible: false
     });
 
     function showCaptureEffect(attackerSkinId: number, victimSkinId: number) {
+
+        const attackerMeta = getMeta(attackerSkinId);
+        const playTime = attackerMeta?.playTime ?? 1800;
+        const hitTime = attackerMeta?.hitTime ?? 700;
+
         setOverlay({
             attackerImage: `/asset/PieceAnime/${attackerSkinId}_attack.gif`,
-            victimImage: `/asset/PieceAnime/${victimSkinId}_hit.gif`,
+            // victimImage: `/asset/PieceAnime/${victimSkinId}_hit.gif`,
             isVisible: true,
         });
-        setTimeout(() => setOverlay((prev) => ({ ...prev, isVisible: false })), 1000); // 1초 뒤 꺼짐
+        console.log(`attackerSkinId : ${attackerSkinId}, victimSkinId : ${victimSkinId}`)
+
+        setTimeout(() => setOverlay((prev) => ({ ...prev, showRedBox: true })), hitTime); // 히트시간
+        setTimeout(() => setOverlay((prev) => ({ ...prev, isVisible: false, showRedBox: false })), playTime); // 애니메이션 재생시간
+
     }
 
     // Recoil state
@@ -243,7 +255,6 @@ const GamePage = () => {
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
                 {/* <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} /> */}
                 <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinSetting={matchInfo?.userSkinSetting} opponentSkinSetting={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} onCapture={(attackerSkinId: number, victimSkinId: number) => showCaptureEffect(attackerSkinId, victimSkinId)} />
-
                 <OverlayEffects attackerImage={overlay.attackerImage} victimImage={overlay.victimImage} isVisible={overlay.isVisible} />
             </div>
 
