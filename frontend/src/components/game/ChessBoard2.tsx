@@ -32,7 +32,6 @@ const ChessBoard2 = ({
     pcPieceSize = 64,
     mobilePieceSize = 43,
     tabletPieceSize = 59,
-    onCapture
 }: {
     isFlipped?: boolean;
     turnResult?: any;
@@ -52,7 +51,6 @@ const ChessBoard2 = ({
     pcPieceSize?: number;
     tabletPieceSize?: number;
     mobilePieceSize?: number;
-    onCapture?:(attackerSkinId: number, victimSkinId: number)=> void;
 }) => {
 
     // 상태
@@ -196,7 +194,6 @@ const ChessBoard2 = ({
         socket,
         gameId,
         isFlipped,
-        onCapture,
         userSkinSetting,
         opponentSkinSetting
     });

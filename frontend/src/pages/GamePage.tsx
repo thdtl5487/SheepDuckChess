@@ -7,11 +7,12 @@ import PlayerPanel from "../components/game/PlayerPanel";
 import GameLog from "../components/game/GameLog";
 import OverlayEffects from "../components/game/OverlayEffects";
 import { api } from "../utills/api";
-import { matchInfoAtom, MatchInfo } from "../types/matchInfo";
+import { matchInfoAtom, MatchInfo, SkinSetting } from "../types/matchInfo";
 import { useMatchSocket, MatchFoundPayload } from "../hooks/inGame/useMatchSocket";
 import { gameURL } from "../utills/api";
 import { useAnimationMeta } from "../hooks/inGame/useAnimationMeta";
 import { ChessBoard } from "../components/game/ChessBoard";
+import { Piece } from "../types/piece";
 
 const gameServerURL = gameURL;
 
@@ -28,11 +29,12 @@ const GamePage = () => {
     const { getMeta, loading } = useAnimationMeta();
 
 
-    const [overlay, setOverlay] = useState<{ attackerImage?: string; victimImage?: string; isVisible: boolean }>({
-        isVisible: false
+    const [overlay, setOverlay] = useState<{ attackerImage?: string; victimImage?: string; isVisible: boolean; isOpponentAttack: boolean }>({
+        isVisible: false,
+        isOpponentAttack: false
     });
 
-    function showCaptureEffect(attackerSkinId: number, victimSkinId: number) {
+    function showCaptureEffect(attackerSkinId: number, victimSkinId: number, isOpponentAttack: boolean) {
 
         const attackerMeta = getMeta(attackerSkinId);
         const playTime = attackerMeta?.playTime ?? 1800;
@@ -40,14 +42,14 @@ const GamePage = () => {
 
         setOverlay({
             attackerImage: `/asset/PieceAnime/${attackerSkinId}_attack.gif`,
-            // victimImage: `/asset/PieceAnime/${victimSkinId}_hit.gif`,
+            victimImage: `/asset/PieceAnime/${victimSkinId}_attack.gif`,
             isVisible: true,
+            isOpponentAttack: false
         });
         console.log(`attackerSkinId : ${attackerSkinId}, victimSkinId : ${victimSkinId}`)
 
         setTimeout(() => setOverlay((prev) => ({ ...prev, showRedBox: true })), hitTime); // 히트시간
         setTimeout(() => setOverlay((prev) => ({ ...prev, isVisible: false, showRedBox: false })), playTime); // 애니메이션 재생시간
-
     }
 
     // Recoil state
@@ -94,6 +96,7 @@ const GamePage = () => {
     const reconnectCount = useRef(0);
     const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
     const [isOpponentConnected, setIsOpponentConnected] = useState(true);
+    const prevTurnResultRef = useRef<any>(null);
 
     const [gameOver, setGameOver] = useState<{
         result: "white_win" | "black_win" | "draw";
@@ -153,9 +156,76 @@ const GamePage = () => {
 
 
 
-    // 2) WebSocket 연결 전담 이펙트
 
-    // ① connectWebSocket 함수로 ws 초기화 + 핸들러 등록
+    useEffect(() => {
+        if (!turnResult?.lastMove) return;
+        // prev, curr 모두 1차원 배열로 평탄화
+        const prevFlatBoard: Piece[] = prevTurnResultRef.current?.board ?? [];
+        const currFlatBoard: Piece[] = turnResult.board ?? [];
+
+        // 1. 이전보다 기물이 줄었으면 → 캡처 발생
+        if (currFlatBoard.length < prevFlatBoard.length) {
+            // 2. "사라진 기물" 찾기
+            const lostPiece = prevFlatBoard.find(
+                (prevPiece) =>
+                    !currFlatBoard.some(
+                        (currPiece) =>
+                            currPiece.position === prevPiece.position &&
+                            currPiece.type === prevPiece.type &&
+                            currPiece.color === prevPiece.color
+                    )
+            );
+            // 3. "마지막으로 이동한 기물" 찾기 (lastMove.to)
+            const { to } = turnResult.lastMove;
+            const movedPiece = currFlatBoard.find((p) => p.position === to);
+
+            if (lostPiece && movedPiece) {
+                // 4. 각각의 스킨ID 추출
+                const attackerKey = `piece_skin_${movedPiece.type}` as keyof SkinSetting;
+                // myColor 기준이 아니라 movedPiece.color 기준!
+                const attackerSkinId =
+                    movedPiece.color === matchInfo?.yourColor
+                        ? matchInfo?.userSkinSetting?.[attackerKey]
+                        : matchInfo?.opponentSkinSetting?.[attackerKey];
+
+                const victimKey = `piece_skin_${lostPiece.type}` as keyof SkinSetting;
+                const victimSkinId =
+                    lostPiece.color === matchInfo?.yourColor
+                        ? matchInfo?.userSkinSetting?.[victimKey]
+                        : matchInfo?.opponentSkinSetting?.[victimKey];
+
+                if (
+                    typeof attackerSkinId === "number" &&
+                    typeof victimSkinId === "number"
+                ) {
+                    // 5. 애니메이션 호출
+                    if(myColor === lostPiece.color){
+                        showCaptureEffect(attackerSkinId, victimSkinId, false);
+                    }else{
+                        showCaptureEffect(attackerSkinId, victimSkinId, true);
+                    }
+                } else {
+                    // 디버그: 값 확인
+                    console.warn("애니메이션 호출 실패 - 스킨ID 확인 필요", { attackerSkinId, victimSkinId, movedPiece, lostPiece });
+                }
+            }
+        }
+
+        // 이전 보드 갱신
+        prevTurnResultRef.current = turnResult;
+    }, [turnResult, matchInfo]);
+
+    // 1. prevTurnResultRef는 항상 turnResult 바뀐 뒤 최신화
+    useEffect(() => {
+        console.log('prevTurnResultRef : ', prevTurnResultRef)
+        if (turnResult) {
+            prevTurnResultRef.current = turnResult
+        };
+
+    }, [turnResult]);
+
+
+    // connectWebSocket 함수로 ws 초기화 + 핸들러 등록
     const connectWebSocket = () => {
         console.log("🔥 WebSocket 연결 시도");
         const ws = new WebSocket(gameServerURL);
@@ -254,8 +324,8 @@ const GamePage = () => {
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
                 {/* <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} /> */}
-                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinSetting={matchInfo?.userSkinSetting} opponentSkinSetting={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} onCapture={(attackerSkinId: number, victimSkinId: number) => showCaptureEffect(attackerSkinId, victimSkinId)} />
-                <OverlayEffects attackerImage={overlay.attackerImage} victimImage={overlay.victimImage} isVisible={overlay.isVisible} />
+                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinSetting={matchInfo?.userSkinSetting} opponentSkinSetting={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
+                <OverlayEffects attackerImage={overlay.attackerImage} victimImage={overlay.victimImage} isVisible={overlay.isVisible} isOpponentAttack={overlay.isOpponentAttack} />
             </div>
 
             {/* 하단: 내 플레이어 패널 + 로그 */}
