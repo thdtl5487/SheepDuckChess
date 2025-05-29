@@ -16,21 +16,23 @@ const OverlayEffects = ({
 }: OverlayEffectsProps) => {
     // 위치/방향 동적 계산
     const attackerStyle = isOpponentAttack
-        ? "absolute right-1/4 top-1/3 w-32 h-32 object-contain"
-        : "absolute left-1/4 top-1/3 w-32 h-32 object-contain";
+        ? "absolute right-1/4 top-1/3 w-32 h-32 object-contain" // 상대가 공격자
+        : "absolute left-1/4 top-1/3 w-32 h-32 object-contain"; // 내가 공격자
+
+
     const victimStyle = isOpponentAttack
-        ? "absolute left-1/4 top-1/3 w-32 h-32 object-contain"
-        : "absolute right-1/4 top-1/3 w-32 h-32 object-contain";
+        ? "absolute left-1/4 top-1/3 w-32 h-32 object-contain" // 내가 피격자
+        : "absolute right-1/4 top-1/3 w-32 h-32 object-contain"; // 상대가 피격자
+
 
     // 이미지 flip 방향 (마주보게)
     const attackerImgStyle = {
-        transform: attackerStyle.includes("left") ? "scaleX(-1)" : undefined,
+        transform: isOpponentAttack ? "scaleX(1)" : "scaleX(-1)",
     };
     const victimImgStyle = {
-        filter: isOpponentAttack ? "brightness(0.5)" : undefined,
-        transform: victimStyle.includes("left") ? "scaleX(-1)" : undefined,
+        // filter: isOpponentAttack ? "brightness(0.5)" : undefined,
+        transform: isOpponentAttack ? "scaleX(-1)" : "scaleX(1)",
     };
-    
     console.log('isOpponentAttack : ', isOpponentAttack);
 
     return (
@@ -41,11 +43,16 @@ const OverlayEffects = ({
                     key={gifKey ? `attacker-${gifKey}` : undefined}
                     src={attackerImage + (gifKey ? `?t=${gifKey}` : "")}
                     alt="attacker"
-                    initial={{ x: isOpponentAttack ? 200 : -200, opacity: 0 }}
+                    initial={{
+                        scaleX: isOpponentAttack ? -1 : 1,
+                        x: isOpponentAttack ? 400 : -400,
+                        opacity: 0
+                    }}
                     animate={{
+                        scaleX: isOpponentAttack ? -1 : 1,
                         x: 0,
                         opacity: 1,
-                        scale: [2.5]
+                        scale: [2]
                     }}
                     transition={{ duration: 0.4 }}
                     className={attackerStyle}
@@ -58,10 +65,15 @@ const OverlayEffects = ({
                     key={gifKey ? `victim-${gifKey}` : undefined}
                     src={victimImage + (gifKey ? `?t=${gifKey}` : "")}
                     alt="victim"
-                    initial={{ scale: 2.5 }}
+                    initial={{
+                        scaleX: isOpponentAttack ? 1 : -1,
+                        scale: 1,
+                        opacity: 0
+                    }}
                     animate={{
-                        scale: [2.5],
-                        opacity: [1, 0.8, 0.5, 0],
+                        scaleX: isOpponentAttack ? 1 : -1,
+                        scale: [2, 2.1, 1.9, 2],
+                        opacity: [1, 0.8, 0.5, 0.5],
                     }}
                     transition={{
                         delay: 0.1,

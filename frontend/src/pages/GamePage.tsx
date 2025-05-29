@@ -178,9 +178,9 @@ const GamePage = () => {
                 const victimSkinId = lostPiece.color === matchInfo?.yourColor ? matchInfo?.userSkinSetting?.[victimKey] : matchInfo?.opponentSkinSetting?.[victimKey];
                 if (typeof attackerSkinId === "number" && typeof victimSkinId === "number") {
                     if (myColor === lostPiece.color) {
-                        showCaptureEffect(attackerSkinId, victimSkinId, false);
-                    } else {
                         showCaptureEffect(attackerSkinId, victimSkinId, true);
+                    } else {
+                        showCaptureEffect(attackerSkinId, victimSkinId, false);
                     }
                 }
             }
