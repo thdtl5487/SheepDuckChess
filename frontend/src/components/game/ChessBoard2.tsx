@@ -250,7 +250,13 @@ const ChessBoard2 = ({
         <div className="chess-board-wrapper" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
             {/* EmotionOverlay (왼쪽) */}
             <div style={{ width: tileSize * 2, height: tileSize * 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {/* <EmotionOverlay ... /> */}
+                <EmotionOverlay
+                    pieces={turnResult?.board || []}
+                    characterColor={myColor}
+                    skinId={userSkinSetting.character_id}
+                    side="left"
+                    isOpponentConnected={true} // 본인은 항상 연결 중
+                />
             </div>
             {/* 체스판 */}
             <div className="chess-board"
@@ -446,7 +452,13 @@ const ChessBoard2 = ({
             </div>
             {/* EmotionOverlay (오른쪽) */}
             <div style={{ width: tileSize * 2, height: tileSize * 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {/* <EmotionOverlay ... /> */}
+                <EmotionOverlay
+                    pieces={turnResult?.board || []}
+                    characterColor={myColor === "white" ? "black" : "white"}
+                    skinId={opponentSkinSetting.character_id}
+                    side="right"
+                    isOpponentConnected={isOpponentConnected}
+                />
             </div>
             {
                 promotionInfo && (
