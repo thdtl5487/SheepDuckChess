@@ -92,7 +92,7 @@ const MainPage = (): ReactElement | null => {
             <h1 className="text-3xl font-bold mb-6">🐑 {user.nick} 🦆</h1>
             <div className="flex flex-col gap-4">
                 <button className="px-6 py-3 bg-blue-500 text-white rounded-lg text-lg" onClick={handleMatchStart}>매칭 시작</button>
-                <button className="px-6 py-3 bg-green-500 text-white rounded-lg text-lg">스킨 변경</button>
+                <button className="px-6 py-3 bg-green-500 text-white rounded-lg text-lg" onClick={() => navigate('/skinchange')}>스킨 변경</button>
                 <LogoutButton />
             </div>
         </div>
