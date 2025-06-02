@@ -1,44 +1,74 @@
-import query from "../../shared/config/db";
-import { QueryResult } from "pg";
+import redis from "../../shared/config/redis"
+import { ApiError } from "../../shared/utils/apiError";
+import * as skinRepo from '../repository/skinRepo'
 
-export const selectMySkin = async (usn: number) => {
-    const result = await query(
-        `SELECT skin_id FROM sdc_user_skins WHERE usn = $1`, [usn]
-    )
+export const getMySkins = async (usn: number) => {
 
-    return result;
+    const saved = await redis.get(`userSkin:${usn}`);
+    if (!saved) {
+        const dbResult = await skinRepo.selectMySkin(usn)
+        if (!dbResult) {
+            throw new ApiError(500, '내 스킨 정보를 찾을 수 없습니다.');
+        } else {
+            const skinIds = dbResult.rows.map(row => row.skin_id);
+            await redis.set(`userSkin:${usn}`, JSON.stringify(skinIds))
+            return skinIds;
+        }
+    }
 }
 
-export const selectMySkinSetting = async (usn: number) => {
-    const result = await query(
-        `SELECT usn, piece_skin_pawn, piece_skin_knight, piece_skin_bishop, piece_skin_rook, piece_skin_queen, piece_skin_king, board_skin, character_id
-        from sdc_user_skin_setting WHERE usn = $1`, [usn]
-    )
-    return result.rows[0]
-} 
+export const getMySkinSettings = async (usn: number) => {
 
-export const modifyMySkins = async (usn: number, pawn: number, knight: number, bishop: number, rook: number, queen:number, king: number, board: number, character: number) => {
-
-    const now = new Date().toISOString();
-    
+    const dbResult = await skinRepo.selectMySkinSetting(usn);
+    if (!dbResult) {
+        throw new ApiError(500, '내 스킨 장착 정보를 찾을 수 없습니다.');
+    } else {
+        const skinSettings = dbResult.rows[0];
+        return skinSettings;
+    }
 }
 
-export const buy = async (usn: number, balanceMoney: number, balanceFreeCash: number, balanceRealCash: number) => {
+export const modifyMySkin = async (usn: number, pawn: number, knight: number, rook: number, bishop: number, queen: number, king: number, board: number, character: number) => {
+    // 1. 부위-스킨ID 맵 만들기
+    const partMap = {
+        pawn,
+        knight,
+        bishop,
+        rook,
+        queen,
+        king,
+        board,
+        character,
+    };
 
-    const now = new Date().toISOString();
+    // 2. 각 부위/스킨ID 한 번에 검증
+    for (const [part, skinId] of Object.entries(partMap)) {
+        await validateSkin(part, skinId);
+    }
 
+    // 3. 검증 통과 후 DB 업데이트
+    const dbResult = await skinRepo.modifyMySkins(usn, pawn, knight, bishop, rook, queen, king, board, character);
+    if (dbResult != 1) {
+        throw new ApiError(500, '스킨 장착 정보 교체 실패');
+    }
+    return dbResult;
 }
 
-export const selectAllSkinsCanBuy = async () =>{
-    const result = await query(
-        `SELECT skin_id, skin_type, rarity, price_money, price_cash, is_real_cash FROM sdc_skins WHERE is_active = true AND is_sell = true`
-    )
-    return result;
+async function validateSkin(type: string, skinId: number) {
+    if (!skinId) throw new ApiError(400, `스킨 ID 누락: ${type}`);
+    const redisVal = await redis.get(`skin:${skinId}`);
+    if (!redisVal) throw new ApiError(400, `존재하지 않는 스킨: ${skinId}`);
+    const skinInfo = JSON.parse(String(redisVal));
+    if (skinInfo.skin_type !== type) {
+        throw new ApiError(400, `${skinId}는 ${type} 부위에 장착 불가`);
+    }
 }
 
-export const selectAllSkins = async () => {
-    const result = await query(
-        `SELECT skin_id, skin_type, rarity, price_money, price_cash, is_real_cash FROM sdc_skins`
-    )
-    return result;
+export const cachingAllSkin = async () => {
+
+    const allSkin = (await skinRepo.selectAllSkins()).rows;
+    for (const skin of allSkin) {
+        await redis.set(`skin:${skin.skin_id}`, JSON.stringify(skin));
+    }
+
 }
