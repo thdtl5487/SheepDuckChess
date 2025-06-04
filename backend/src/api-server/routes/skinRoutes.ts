@@ -11,6 +11,6 @@ skinRoutes.post('/changeSkinSetting', modifyMySkins)
 skinRoutes.post('/buy', buy)
 skinRoutes.post('/cache', cachingSkins)
 skinRoutes.post('/all', getAllSkins)
-skinRoutes.post('/allSkin', getAllSkinsToBuy)
+skinRoutes.post('/getProduct', getAllSkinsToBuy)
 
 export default skinRoutes;

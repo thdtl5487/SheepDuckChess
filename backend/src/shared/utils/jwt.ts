@@ -17,8 +17,9 @@ export const verifyToken = (token: string): any => {
 
 export const getToken = (req: Request): any => {
     const token = req.cookies?.token;
-    if (!token) {
-        return new ApiError(401, '토큰 비정상');
+    // console.log('token : ', token);
+    if (!token || token == undefined) {
+        throw new ApiError(401, '토큰 비정상');
     }
 
     return token;
@@ -27,7 +28,7 @@ export const getToken = (req: Request): any => {
 export const getPayload = (token: string): any => {
     const payload = verifyToken(token);
     if (!payload) {
-        return new ApiError(401, '페이로드 비정상');
+        throw new ApiError(401, '페이로드 비정상');
     }
 
     return payload;
