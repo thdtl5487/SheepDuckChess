@@ -172,7 +172,13 @@ const ChessBoard2 = ({
             const toX = Math.floor(relX / tileSize);
             const toY = Math.floor(relY / tileSize);
             if (toX >= 0 && toX < 8 && toY >= 0 && toY < 8) {
-                handlePieceMove(from, [toX, toY], piece);
+                // 하이라이트된(합법) 칸으로만 이동 허용
+                const boardX = isFlipped ? 7 - toX : toX;
+                const boardY = isFlipped ? 7 - toY : toY;
+                const isAllowed = highlightedSquares.some(([hx, hy]) => hx === boardX && hy === boardY);
+                if (isAllowed) {
+                    handlePieceMove(from, [toX, toY], piece);
+                }
             }
         }
         cleanupDrag();

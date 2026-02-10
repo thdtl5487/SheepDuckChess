@@ -123,6 +123,11 @@ const isCastlingMove = (
     const rank = color === "white" ? "1" : "8";
     if (from !== `e${rank}`) return null;
 
+    // 캐슬링 시도일 때만(목적지가 g/c 파일일 때만) 체크 상태 금지 검사
+    if (to === `g${rank}` || to === `c${rank}`) {
+        if (isKingInCheck(color, board)) return null;
+    }
+
     const isPathAttacked = (squares: string[]): boolean =>
         squares.some(square => {
             const simulated = board.map(p =>
@@ -191,7 +196,43 @@ function isKingInCheck(color: "white" | "black", board: Piece[]): boolean {
 }
 
 // 체크메이트 감지
-function isCheckmate(color: "white" | "black", board: Piece[]): boolean {
+function simulateAfterMove(params: {
+    board: Piece[];
+    piece: Piece;
+    from: string;
+    to: string;
+    moved: { [pos: string]: boolean };
+    enPassantTarget: string | null;
+}): Piece[] {
+    const { board, piece, from, to, moved, enPassantTarget } = params;
+
+    const castling = isCastlingMove(from, to, piece.type, piece.color, board, moved);
+    if (castling) {
+        const rook = board.find(p => p.position === castling.rookFrom);
+        const next = board
+            .filter(p => p.position !== from && p.position !== castling.rookFrom)
+            .concat({ ...piece, position: to });
+        return rook ? next.concat({ ...rook, position: castling.rookTo }) : next;
+    }
+
+    const isEnPassant = piece.type === "pawn" && enPassantTarget === to && Math.abs(to.charCodeAt(0) - from.charCodeAt(0)) === 1;
+    const capturedEnPassantPos = (() => {
+        if (!isEnPassant) return null;
+        const rank = piece.color === "white" ? parseInt(to[1]) - 1 : parseInt(to[1]) + 1;
+        return `${to[0]}${rank}`;
+    })();
+
+    return board
+        .filter(p => p.position !== from && p.position !== to && (!capturedEnPassantPos || p.position !== capturedEnPassantPos))
+        .concat({ ...piece, position: to });
+}
+
+function isCheckmate(
+    color: "white" | "black",
+    board: Piece[],
+    moved: { [pos: string]: boolean } = {},
+    enPassantTarget: string | null = null
+): boolean {
     if (!isKingInCheck(color, board)) return false;
 
     const piecesOfColor = board.filter(p => p.color === color);
@@ -201,11 +242,16 @@ function isCheckmate(color: "white" | "black", board: Piece[]): boolean {
             for (let rank = 0; rank < 8; rank++) {
                 const to = coordsToPosition(file, rank);
                 if (
-                    isValidMove(piece.position, to, piece.type, piece.color, board, {}, null)
+                    isValidMove(piece.position, to, piece.type, piece.color, board, moved, enPassantTarget)
                 ) {
-                    const simulated = board
-                        .filter(p => p.position !== piece.position && p.position !== to)
-                        .concat({ ...piece, position: to });
+                    const simulated = simulateAfterMove({
+                        board,
+                        piece,
+                        from: piece.position,
+                        to,
+                        moved,
+                        enPassantTarget,
+                    });
 
                     if (!isKingInCheck(color, simulated)) {
                         return false;
@@ -218,7 +264,12 @@ function isCheckmate(color: "white" | "black", board: Piece[]): boolean {
 }
 
 // 스테일메이트 감지
-function isStalemate(color: "white" | "black", board: Piece[]): boolean {
+function isStalemate(
+    color: "white" | "black",
+    board: Piece[],
+    moved: { [pos: string]: boolean } = {},
+    enPassantTarget: string | null = null
+): boolean {
     if (isKingInCheck(color, board)) return false;
 
     const piecesOfColor = board.filter(p => p.color === color);
@@ -231,11 +282,16 @@ function isStalemate(color: "white" | "black", board: Piece[]): boolean {
                 if (to === piece.position) continue;
 
                 if (
-                    isValidMove(piece.position, to, piece.type, piece.color, board, {}, null)
+                    isValidMove(piece.position, to, piece.type, piece.color, board, moved, enPassantTarget)
                 ) {
-                    const simulated = board
-                        .filter(p => p.position !== piece.position && p.position !== to)
-                        .concat({ ...piece, position: to });
+                    const simulated = simulateAfterMove({
+                        board,
+                        piece,
+                        from: piece.position,
+                        to,
+                        moved,
+                        enPassantTarget,
+                    });
 
                     const isInCheck = isKingInCheck(color, simulated);
 

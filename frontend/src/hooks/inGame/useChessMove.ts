@@ -34,6 +34,41 @@ export function useChessMove({
     } | null>(null);
     const { sendTurn } = useTurnSender(socket, gameId);
 
+    function simulateBoardAfterMove(params: {
+        board: Piece[];
+        from: string;
+        to: string;
+        piece: Piece;
+        moved: { [pos: string]: boolean };
+        enPassantTarget: string | null;
+    }): Piece[] {
+        const { board, from, to, piece, moved, enPassantTarget } = params;
+
+        // castling
+        const castling = piece.type === 'king'
+            ? ChessRules.isCastlingMove(from, to, piece.type, piece.color, board, moved)
+            : null;
+        if (castling) {
+            const rook = board.find(p => p.position === castling.rookFrom);
+            const next = board
+                .filter(p => p.position !== from && p.position !== castling.rookFrom)
+                .concat({ ...piece, position: to });
+            return rook ? next.concat({ ...rook, position: castling.rookTo }) : next;
+        }
+
+        // en-passant
+        const isEnPassant = piece.type === 'pawn' && enPassantTarget === to;
+        const capturedEnPassantPos = (() => {
+            if (!isEnPassant) return null;
+            const rank = piece.color === 'white' ? parseInt(to[1]) - 1 : parseInt(to[1]) + 1;
+            return `${to[0]}${rank}`;
+        })();
+
+        return board
+            .filter(p => p.position !== from && p.position !== to && (!capturedEnPassantPos || p.position !== capturedEnPassantPos))
+            .concat({ ...piece, position: to });
+    }
+
     // 기물 클릭 (선택/이동/하이라이트)
     function handlePieceClick(x: number, y: number, piece: Piece | null) {
         if (!turnResult || !turnResult.turn) return;
@@ -73,8 +108,24 @@ export function useChessMove({
                         enPassantTarget
                     )
                 ) {
-                    // 하이라이트 좌표도 화면 기준 그대로 push
-                    moves.push([tx, ty]);
+                    const simulated = simulateBoardAfterMove({
+                        board: turnResult.board,
+                        from,
+                        to,
+                        piece,
+                        moved,
+                        enPassantTarget,
+                    });
+
+                    // 자기 킹이 체크 상태가 되는 수는 제외
+                    if (!ChessRules.isKingInCheck(color, simulated)) {
+                        moves.push([tx, ty]);
+                    } else {
+                        // 디버깅용(원하면 나중에 env로 토글 가능)
+                        if (process.env.NODE_ENV !== 'production') {
+                            console.log('❌ illegal move (self-check) filtered', { from, to, color });
+                        }
+                    }
                 }
             }
         }

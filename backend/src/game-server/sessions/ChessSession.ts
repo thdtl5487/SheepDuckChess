@@ -256,6 +256,27 @@ export class ChessSession {
 
         if (castling) {
 
+            // 캐슬링은 체크 상태에서 불가 + 캐슬링 후에도 자기 킹이 체크면 불가
+            if (isKingInCheck(this.turn, this.pieces)) {
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('❌ illegal castling while in check', { from, to, turn: this.turn });
+                }
+                return { success: false };
+            }
+
+            const rookSim = this.pieces.find(p => p.position === castling.rookFrom);
+            const simulatedPieces = this.pieces
+                .filter(p => p.position !== from && p.position !== castling.rookFrom)
+                .concat({ ...piece, position: to })
+                .concat(rookSim ? [{ ...rookSim, position: castling.rookTo }] : []);
+
+            if (isKingInCheck(this.turn, simulatedPieces)) {
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('❌ illegal move (self-check) - castling', { from, to, turn: this.turn });
+                }
+                return { success: false };
+            }
+
             // 필터링 전 rook 객체 미리 저장장
             const rook = this.pieces.find(p => p.position === castling.rookFrom);
 
@@ -278,15 +299,31 @@ export class ChessSession {
             // log 생성 + 턴 전환 + 체크메이트 판정 등 동일
             const nextTurn = this.turn === "white" ? "black" : "white";
             const check = isKingInCheck(nextTurn, this.pieces);
-            const mate = isCheckmate(nextTurn, this.pieces);
+            const mate = isCheckmate(nextTurn, this.pieces, this.moved, this.enPassantTarget);
             const log = formatMoveLog(piece, from, to, this.pieces, check, mate, undefined, to === "g1" || to === "g8" ? "O-O" : "O-O-O");
+
+            if (check && process.env.NODE_ENV !== 'production') {
+                console.log('✅ CHECK', { attacker: this.turn, defender: nextTurn, from, to });
+            }
 
             if (mate) {
                 this.result = this.turn === "white" ? "white_win" : "black_win";
-            } else if (isStalemate(nextTurn, this.pieces) || isInsufficientMaterial(this.pieces)) {
+            } else if (isStalemate(nextTurn, this.pieces, this.moved, this.enPassantTarget) || isInsufficientMaterial(this.pieces)) {
                 this.result = "draw";
             }
             this.logs.push(log);
+
+            if (this.result !== "ongoing") {
+                this.broadcast({
+                    type: "GAME_OVER",
+                    result: this.result,
+                    winner: this.result === "draw" ? undefined : this.result === "white_win" ? "white" : "black",
+                    reason: mate ? "checkmate" : "draw",
+                });
+                console.log(this.logs);
+                this.saveLog().catch(console.error);
+            }
+
             this.turn = nextTurn;
             this.clockLastTs = Date.now();
             console.log(`from : ${from}, to : ${to}`)
@@ -308,6 +345,29 @@ export class ChessSession {
         } else {
             const target = this.pieces.find(p => p.position === to);
             const isCapture = !!target;
+
+            // 자기 킹이 체크 상태가 되는 수는 금지(앙파상/프로모션 포함)
+            const isEnPassant = piece.type === "pawn" && to === this.enPassantTarget;
+            const capturedEnPassantPos = (() => {
+                if (!isEnPassant) return null;
+                const rank = piece.color === "white" ? parseInt(to[1]) - 1 : parseInt(to[1]) + 1;
+                return `${to[0]}${rank}`;
+            })();
+
+            const promotedType = (piece.type === "pawn" && (to[1] === "8" || to[1] === "1") && promotion)
+                ? promote(piece, promotion).type
+                : piece.type;
+
+            const simulatedPieces = this.pieces
+                .filter(p => p.position !== from && p.position !== to && (!capturedEnPassantPos || p.position !== capturedEnPassantPos))
+                .concat({ ...piece, type: promotedType, position: to });
+
+            if (isKingInCheck(this.turn, simulatedPieces)) {
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('❌ illegal move (self-check)', { from, to, turn: this.turn });
+                }
+                return { success: false };
+            }
 
             // 앙파상
             if (piece.type === "pawn" && to === this.enPassantTarget) {
@@ -343,9 +403,13 @@ export class ChessSession {
             const board = this.pieces;
 
             const check = isKingInCheck(nextTurn, board);
-            const mate = isCheckmate(nextTurn, board);
-            const draw = isStalemate(nextTurn, board) || isInsufficientMaterial(board);
+            const mate = isCheckmate(nextTurn, board, this.moved, this.enPassantTarget);
+            const draw = isStalemate(nextTurn, board, this.moved, this.enPassantTarget) || isInsufficientMaterial(board);
             const log = formatMoveLog(piece, from, to, board, check, mate);
+
+            if (check && process.env.NODE_ENV !== 'production') {
+                console.log('✅ CHECK', { attacker: this.turn, defender: nextTurn, from, to });
+            }
 
             // console.log("piece : ", piece);
 
@@ -353,7 +417,7 @@ export class ChessSession {
 
             if (mate) {
                 this.result = this.turn === "white" ? "white_win" : "black_win";
-            } else if (isStalemate(nextTurn, this.pieces) || isInsufficientMaterial(this.pieces)) {
+            } else if (isStalemate(nextTurn, this.pieces, this.moved, this.enPassantTarget) || isInsufficientMaterial(this.pieces)) {
                 this.result = "draw";
             }
 
