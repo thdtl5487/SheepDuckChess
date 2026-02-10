@@ -74,10 +74,10 @@ wss.on("connection", (socket: ws.WebSocket) => {
 
         if (msg.type === "GAME_START") {
             console.log("GAME START 메세지 받았음!!");
-            const { white, black, gameId } = msg;
+            const { white, black, gameId, timeControlSec } = msg;
             if (!sessionManager.hasSession(gameId)) {
                 console.log("GAME START 세션 생성 중 ..... ");
-                sessionManager.createSession(gameId, white, black);
+                sessionManager.createSession(gameId, white, black, typeof timeControlSec === 'number' ? timeControlSec : 600);
                 socket.send(JSON.stringify({ type: "GAME_STARTED", gameId }));
             }
         }
@@ -101,3 +101,8 @@ const CLEANUP_INTERVAL = 1000 * 60 * 5; // 5분마다
 setInterval(() => {
     sessionManager.cleanupEmptySessions();
 }, CLEANUP_INTERVAL);
+
+// 시간초: 서버 권한으로 매 세션 클럭 차감/시간패 체크
+setInterval(() => {
+    sessionManager.tickAllClocks(Date.now());
+}, 250);

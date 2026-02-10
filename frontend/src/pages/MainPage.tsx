@@ -17,6 +17,7 @@ const MainPage = (): ReactElement | null => {
     const [matchingStarted, setMatchingStarted] = useState(false);
     const [triggerQueue, setTriggerQueue] = useState(false);
     const [matchedInfo, setMatchedInfo] = useState<any | null>(null);
+    const [timeMinutes, setTimeMinutes] = useState<number>(10); // 기본 10분
 
     const handleMatchStart = () => {
         setMatchingStarted(true);
@@ -33,7 +34,7 @@ const MainPage = (): ReactElement | null => {
             userSkinSetting: payload.userSkinSetting,
             opponentSkinSetting: payload.opponentSkinSetting,
         });
-    });
+    }, { timeMinutes });
 
     const handleCancelMatch = () => {
         if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -90,6 +91,25 @@ const MainPage = (): ReactElement | null => {
             )}
             <h1 className="text-3xl font-bold mb-6">🐑 Welcome SheepDuckChess 🦆</h1>
             <h1 className="text-3xl font-bold mb-6">🐑 {user.nick} 🦆</h1>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="text-sm text-gray-700">게임 시간</div>
+                <div className="flex items-center gap-2">
+                    {[3, 10, 30].map((m) => (
+                        <button
+                            key={m}
+                            type="button"
+                            onClick={() => setTimeMinutes(m)}
+                            className={
+                                timeMinutes === m
+                                    ? "px-3 py-1 rounded bg-blue-500 text-white text-sm"
+                                    : "px-3 py-1 rounded bg-gray-200 text-gray-800 text-sm"
+                            }
+                        >
+                            {m}분
+                        </button>
+                    ))}
+                </div>
+            </div>
             <div className="flex flex-col gap-4">
                 <button className="px-6 py-3 bg-blue-500 text-white rounded-lg text-lg" onClick={handleMatchStart}>매칭 시작</button>
                 <button className="px-6 py-3 bg-green-500 text-white rounded-lg text-lg" onClick={() => navigate('/skinchange')}>스킨 변경</button>

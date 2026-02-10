@@ -9,8 +9,8 @@ export class SessionManager {
         this.users = new Map();
     }
 
-    createSession(sessionId: string, white: number, black: number): ChessSession {
-        const session = new ChessSession();
+    createSession(sessionId: string, white: number, black: number, timeControlSec: number = 600): ChessSession {
+        const session = new ChessSession(timeControlSec);
         this.sessions.set(sessionId, session);
 
         session.setWhite(white);
@@ -41,6 +41,12 @@ export class SessionManager {
             if((sess as any).playerSockets.size === 0){
                 this.sessions.delete(id);
             }
+        }
+    }
+
+    tickAllClocks(now: number = Date.now()) {
+        for (const sess of this.sessions.values()) {
+            sess.tickClocks(now);
         }
     }
 }

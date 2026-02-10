@@ -12,7 +12,7 @@ export function handleSocketConnection(ws: WS) {
         const parsed = JSON.parse(message.toString());
 
         if (parsed.type === 'JOIN_QUEUE') {
-            const { usn, nick, rating, skinSetting, maxDiff } = parsed.payload;
+            const { usn, nick, rating, skinSetting, maxDiff, timeControlSec } = parsed.payload;
 
             userSession = {
                 ws,
@@ -21,7 +21,8 @@ export function handleSocketConnection(ws: WS) {
                 rating,
                 skinSetting,
                 joinedAt: Date.now(),
-                maxDiff : maxDiff ?? 300 // 기본값 300
+                maxDiff : maxDiff ?? 300, // 기본값 300
+                timeControlSec: typeof timeControlSec === 'number' ? timeControlSec : 600,
             };
 
             addToQueue(userSession);

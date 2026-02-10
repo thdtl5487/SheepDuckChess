@@ -5,7 +5,7 @@ import { UserSession } from './types';
 const queue: UserSession[] = [];
 
 // 연결이 복구되기 전까지 대기 중인 GAME_START 요청을 담아둘 큐
-const pendingStarts: Array<{ gameId: string }> = [];
+const pendingStarts: Array<{ gameId: string; white: number; black: number; timeControlSec: number }> = [];
 
 // 게임서버와 연결할 WebSocket 클라이언트
 let gameServerSocket: WebSocket;
@@ -20,9 +20,9 @@ function connectGameServer() {
 
         // 연결 복구되면 밀린 START 요청들 모두 전송
         while (pendingStarts.length > 0) {
-            const { gameId } = pendingStarts.shift()!;
+            const { gameId, white, black, timeControlSec } = pendingStarts.shift()!;
             console.log("🕓 복구 후 밀린 GAME_START 전송:", gameId);
-            gameServerSocket.send(JSON.stringify({ type: "GAME_START", gameId }));
+            gameServerSocket.send(JSON.stringify({ type: "GAME_START", gameId, white, black, timeControlSec }));
         }
     });
 
@@ -93,7 +93,10 @@ function startMatchingLoop() {
 
                 const diff = Math.abs(p1.rating - p2.rating);
 
-                if (diff <= allowed1 && diff <= allowed2) {
+                const time1 = typeof p1.timeControlSec === 'number' ? p1.timeControlSec : 600;
+                const time2 = typeof p2.timeControlSec === 'number' ? p2.timeControlSec : 600;
+
+                if (diff <= allowed1 && diff <= allowed2 && time1 === time2) {
                     // ✅ 매칭!
 
                     // 큐에서 제거
@@ -110,7 +113,8 @@ function startMatchingLoop() {
                             yourColor: 'white',
                             opponentNick: p2.nick,
                             userSkinSetting: p1.skinSetting,
-                            opponentSkinSetting: p2.skinSetting
+                            opponentSkinSetting: p2.skinSetting,
+                            timeControlSec: time1
                         }
                     };
                     const msg2 = {
@@ -120,7 +124,8 @@ function startMatchingLoop() {
                             yourColor: 'black',
                             opponentNick: p1.nick,
                             userSkinSetting: p2.skinSetting,
-                            opponentSkinSetting: p1.skinSetting
+                            opponentSkinSetting: p1.skinSetting,
+                            timeControlSec: time1
                         }
                     };
 
@@ -136,8 +141,11 @@ function startMatchingLoop() {
                             type: "GAME_START",
                             white: p1.usn,
                             black: p2.usn,
-                            gameId: gameId
+                            gameId: gameId,
+                            timeControlSec: time1
                         }));
+                    } else {
+                        pendingStarts.push({ gameId, white: p1.usn, black: p2.usn, timeControlSec: time1 });
                     }
 
 

@@ -12,6 +12,7 @@ export type MatchFoundPayload = {
     opponentNick: string;
     userSkinSetting: SkinSetting;         // 내 스킨
     opponentSkinSetting : SkinSetting;    // 상대 스킨
+    timeControlSec?: number;
     user?: User;
     triggerQueue?: boolean;
 };
@@ -26,7 +27,10 @@ export type MatchFoundPayload = {
 export function useMatchSocket(
     user: User,
     triggerQueue: boolean,
-    onMatched: (payload: MatchFoundPayload) => void
+    onMatched: (payload: MatchFoundPayload) => void,
+    options?: {
+        timeMinutes?: number;
+    }
 ): React.MutableRefObject<WebSocket | null> {
     const socketRef = useRef<WebSocket | null>(null);
 
@@ -41,6 +45,7 @@ export function useMatchSocket(
         // 연결되었을 때 JOIN_QUEUE 전송
         socket.onopen = () => {
             console.log("조인큐 실행!!");
+            const timeMinutes = options?.timeMinutes ?? 10;
             socket.send(JSON.stringify({
                 type: "JOIN_QUEUE",
                 payload: {
@@ -48,6 +53,7 @@ export function useMatchSocket(
                     nick: user.nick,
                     rating: user.rating,
                     maxDiff: 300,
+                    timeControlSec: Math.max(1, Math.floor(timeMinutes)) * 60,
                     skinSetting: {
                         piece_skin_pawn: user.pieceSkin.pawn,
                         piece_skin_knight: user.pieceSkin.knight,
@@ -71,7 +77,8 @@ export function useMatchSocket(
                     yourColor,
                     opponentNick,
                     userSkinSetting: userSkinSetting,
-                    opponentSkinSetting : opponentSkinSetting
+                    opponentSkinSetting : opponentSkinSetting,
+                    timeControlSec
                 } = msg.payload as MatchFoundPayload;
 
                 // recoil에 저장할 형태로 변환해서 콜백 호출
@@ -80,7 +87,8 @@ export function useMatchSocket(
                     yourColor,
                     opponentNick,
                     userSkinSetting: userSkinSetting,
-                    opponentSkinSetting : opponentSkinSetting
+                    opponentSkinSetting : opponentSkinSetting,
+                    timeControlSec
                 });
             }
         };
@@ -88,7 +96,7 @@ export function useMatchSocket(
         return () => {
             socket.close();
         };
-    }, [triggerQueue, user, onMatched]);
+    }, [triggerQueue, user, onMatched, options?.timeMinutes]);
 
     // socketRef를 반환하여 외부에서 메시지 전송 가능하게 함
     return socketRef;

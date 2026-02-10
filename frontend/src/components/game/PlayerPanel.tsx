@@ -6,9 +6,10 @@ interface PlayerPanelProps {
     rating?: number;
     characterId?: number;
     isYourTurn?: boolean;
+    timeText?: string;
 }
 
-const PlayerPanel = ({ side, nick, rating, characterId, isYourTurn }: PlayerPanelProps) => {
+const PlayerPanel = ({ side, nick, rating, characterId, isYourTurn, timeText }: PlayerPanelProps) => {
     const isYou = side === "you";
 
     return (
@@ -18,6 +19,7 @@ const PlayerPanel = ({ side, nick, rating, characterId, isYourTurn }: PlayerPane
             <div className="text-left">
                 <div className="font-bold text-lg">{nick ?? (isYou ? "You" : "Opponent")}</div>
                 <div className="text-sm text-gray-400">{rating ? `Rating: ${rating}` : "Unrated"}</div>
+                {timeText && <div className="text-sm text-white mt-1">⏱ {timeText}</div>}
                 {isYourTurn && <div className="text-green-400 text-xs mt-1">Your turn</div>}
             </div>
         </div>

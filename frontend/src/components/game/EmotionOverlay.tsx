@@ -11,6 +11,7 @@ interface EmotionOverlayProps {
   /** 오버레이 위치: 왼쪽(opponent) 또는 오른쪽(user) */
   side: 'left' | 'right';
   isOpponentConnected: boolean;
+  timeText?: string;
 }
 
 // material 점수 차에 따라 상태 번호 결정 (1~5)
@@ -23,7 +24,7 @@ function getStateNum(diff: number): number {
   return 3;
 }
 
-const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor, skinId, side, isOpponentConnected }) => {
+const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor, skinId, side, isOpponentConnected, timeText }) => {
   // 전체 점수 계산
   const whiteScore = pieces
     .filter(p => p.color === 'white')
@@ -54,12 +55,19 @@ const EmotionOverlay: React.FC<EmotionOverlayProps> = ({ pieces, characterColor,
   const flipClass = side === 'right' ? 'transform -scale-x-100' : '';
 
   return (
-    <div className={`${positionClass} pointer-events-none z-0`}>
+    <div className={`${positionClass} pointer-events-none z-0 flex flex-col items-center`}
+      style={{ gap: 8 }}
+    >
+      {timeText && (
+        <div className="text-white text-sm font-bold">
+          ⏱ {timeText}
+        </div>
+      )}
       <img
         src={imgSrc}
         alt={`emotion-${stateNum}`}
         className={`w-60 h-60 ${flipClass}`}
-        style={{filter: isOpponentConnected ? "none" : "grayscale(100%) saturate(50%) brightness(80%)"}}
+        style={{ filter: isOpponentConnected ? "none" : "grayscale(100%) saturate(50%) brightness(80%)" }}
       />
     </div>
   );

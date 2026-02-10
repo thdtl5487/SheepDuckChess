@@ -26,6 +26,8 @@ const ChessBoard2 = ({
     userSkinSetting,
     opponentSkinSetting,
     isOpponentConnected,
+    myTimeText,
+    opponentTimeText,
     pcTileSize = 64,
     mobileTileSize = 45,
     tabletTileSize = 64,
@@ -45,6 +47,8 @@ const ChessBoard2 = ({
     userSkinSetting: any;
     opponentSkinSetting: any;
     isOpponentConnected: boolean;
+    myTimeText?: string;
+    opponentTimeText?: string;
     pcTileSize?: number;
     tabletTileSize?: number;
     mobileTileSize?: number;
@@ -99,6 +103,7 @@ const ChessBoard2 = ({
         y: number,
         piece: Piece
     ) {
+        if (gameOver) return;
         if (piece.color != myColor) return;
         e.stopPropagation();
         e.preventDefault();    // ←★ 이거 필수!
@@ -144,6 +149,11 @@ const ChessBoard2 = ({
     function handleDragEnd(e: MouseEvent) {
         const currDrag = dragInfoRef.current;
         if (!currDrag) { cleanupDrag(); return; }
+
+        if (gameOver) {
+            cleanupDrag();
+            return;
+        }
 
         const { startX, startY, mouseDownTime, isDragging, from, piece } = currDrag;
         const dx = Math.abs(e.clientX - startX);
@@ -256,6 +266,7 @@ const ChessBoard2 = ({
                     skinId={userSkinSetting.character_id}
                     side="left"
                     isOpponentConnected={true} // 본인은 항상 연결 중
+                    timeText={myTimeText}
                 />
             </div>
             {/* 체스판 */}
@@ -313,6 +324,7 @@ const ChessBoard2 = ({
                                     zIndex: 1,
                                 }}
                                 onClick={() => {
+                                    if (gameOver) return;
                                     // selectedPiece는 화면상의 x, y를 저장/비교함
                                     let movingPiece = null;
                                     if (selectedPiece) {
@@ -380,6 +392,16 @@ const ChessBoard2 = ({
                     if (piece.color !== myColor) skinSetting = opponentSkinSetting;
                     const imgUrl = getPieceImage(piece, skinSetting);
 
+                    const movedPieceOutlineFilter =
+                        "drop-shadow(2px 0 0 #ff0) " +
+                        "drop-shadow(-2px 0 0 #ff0) " +
+                        "drop-shadow(0 2px 0 #ff0) " +
+                        "drop-shadow(0 -2px 0 #ff0) " +
+                        "drop-shadow(2px 2px 0 #ff0) " +
+                        "drop-shadow(-2px 2px 0 #ff0) " +
+                        "drop-shadow(2px -2px 0 #ff0) " +
+                        "drop-shadow(-2px -2px 0 #ff0)";
+
                     return (
                         <motion.div
                             key={piece.position + piece.type + piece.color}
@@ -410,6 +432,8 @@ const ChessBoard2 = ({
                                 style={{
                                     width: pieceSize,
                                     height: pieceSize,
+                                    borderRadius: 6,
+                                    filter: isMovedPiece ? movedPieceOutlineFilter : "none",
                                     userSelect: "none",
                                     pointerEvents: "none",
                                     display: "block",
@@ -458,6 +482,7 @@ const ChessBoard2 = ({
                     skinId={opponentSkinSetting.character_id}
                     side="right"
                     isOpponentConnected={isOpponentConnected}
+                    timeText={opponentTimeText}
                 />
             </div>
             {

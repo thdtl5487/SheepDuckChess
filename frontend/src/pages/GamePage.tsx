@@ -6,6 +6,7 @@ import ChessBoard2 from "../components/game/ChessBoard2";
 import PlayerPanel from "../components/game/PlayerPanel";
 import GameLog from "../components/game/GameLog";
 import OverlayEffects from "../components/game/OverlayEffects";
+import IngameAlertModal from "../components/game/IngameAlertModal";
 import { api } from "../utills/api";
 import { matchInfoAtom, MatchInfo, SkinSetting } from "../types/matchInfo";
 import { useMatchSocket, MatchFoundPayload } from "../hooks/inGame/useMatchSocket";
@@ -39,10 +40,18 @@ const GamePage = () => {
     const reconnectCount = useRef(0);
     const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
     const [isOpponentConnected, setIsOpponentConnected] = useState(true);
+    const [clockSync, setClockSync] = useState<{
+        initialMs: number;
+        whiteMs: number;
+        blackMs: number;
+        turn: "white" | "black";
+        serverNow: number;
+    } | null>(null);
     const prevTurnResultRef = useRef<any>(null);
     const [gameOver, setGameOver] = useState<{
         result: "white_win" | "black_win" | "draw";
         winner?: "white" | "black";
+        reason?: string;
     } | null>(null);
     const myColor = matchInfo?.yourColor ?? "white";
 
@@ -222,9 +231,13 @@ const GamePage = () => {
             switch (msg.type) {
                 case "TURN_RESULT":
                     setTurnResult(msg);
+                    if (msg.clocks) setClockSync(msg.clocks);
+                    break;
+                case "CLOCK_SYNC":
+                    if (msg.clocks) setClockSync(msg.clocks);
                     break;
                 case "GAME_OVER":
-                    setGameOver({ result: msg.result, winner: msg.winner });
+                    setGameOver({ result: msg.result, winner: msg.winner, reason: msg.reason });
                     localStorage.removeItem('matchInfo');
                     break;
                 case "OPPONENT_DISCONNECTED":
@@ -268,10 +281,50 @@ const GamePage = () => {
         };
     }, [user, gameId]);
 
+    function formatMs(ms: number) {
+        const total = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(total / 60);
+        const s = total % 60;
+        return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    const now = Date.now();
+    const whiteMsLive = clockSync
+        ? clockSync.whiteMs - (clockSync.turn === "white" ? (now - clockSync.serverNow) : 0)
+        : null;
+    const blackMsLive = clockSync
+        ? clockSync.blackMs - (clockSync.turn === "black" ? (now - clockSync.serverNow) : 0)
+        : null;
+
+    const myMs = myColor === "white" ? whiteMsLive : blackMsLive;
+    const oppMs = myColor === "white" ? blackMsLive : whiteMsLive;
+
+    const myTimeText = typeof myMs === 'number' ? formatMs(myMs) : undefined;
+    const oppTimeText = typeof oppMs === 'number' ? formatMs(oppMs) : undefined;
+
+    const modalTitle = gameOver
+        ? gameOver.result === 'draw'
+            ? '무승부'
+            : gameOver.winner === myColor
+                ? '승리'
+                : '패배'
+        : '';
+
+    const modalMessage = gameOver
+        ? gameOver.reason === 'timeout'
+            ? (gameOver.winner === myColor ? '상대 시간 초과로 승리했습니다.' : '시간 초과로 패배했습니다.')
+            : (gameOver.result === 'draw'
+                ? '게임이 무승부로 종료되었습니다.'
+                : (gameOver.winner === myColor ? '게임에서 승리했습니다.' : '게임에서 패배했습니다.'))
+        : '';
+
     return (
         <div className="relative w-full h-screen flex flex-col bg-gray-900 text-white">
             {/* 상단: 상대 플레이어 패널 */}
-            <PlayerPanel side="opponent" />
+            <PlayerPanel
+                side="opponent"
+                nick={matchInfo?.opponentNick}
+            />
 
             {/* 소켓나가기 */}
             <button
@@ -297,15 +350,40 @@ const GamePage = () => {
             {/* 중앙: 체스판 + 연출 */}
             <div className="relative flex-1 flex items-center justify-center w-full h-full min-h-0 overflow-hidden">
                 {/* <ChessBoard isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinId={matchInfo?.userSkinSetting} opponentSkinId={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} /> */}
-                <ChessBoard2 isFlipped={myColor === "black"} turnResult={turnResult} myColor={myColor} gameId={gameId!} socket={socket} gameOver={gameOver} userSkinSetting={matchInfo?.userSkinSetting} opponentSkinSetting={matchInfo?.opponentSkinSetting} isOpponentConnected={isOpponentConnected} />
+                <ChessBoard2
+                    isFlipped={myColor === "black"}
+                    turnResult={turnResult}
+                    myColor={myColor}
+                    gameId={gameId!}
+                    socket={socket}
+                    gameOver={gameOver}
+                    userSkinSetting={matchInfo?.userSkinSetting}
+                    opponentSkinSetting={matchInfo?.opponentSkinSetting}
+                    isOpponentConnected={isOpponentConnected}
+                    myTimeText={myTimeText}
+                    opponentTimeText={oppTimeText}
+                />
                 <OverlayEffects attackerImage={currentOverlay?.attackerImage} victimImage={currentOverlay?.victimImage} isOpponentAttack={currentOverlay?.isOpponentAttack} gifKey={currentOverlay?.id}/>
             </div>
 
             {/* 하단: 내 플레이어 패널 + 로그 */}
             <div className="flex flex-col md:flex-row w-full border-t border-gray-700">
-                <PlayerPanel side="you" />
+                <PlayerPanel
+                    side="you"
+                    nick={user?.nick}
+                />
                 <GameLog />
             </div>
+
+            <IngameAlertModal
+                isOpen={!!gameOver}
+                title={modalTitle}
+                message={modalMessage}
+                confirmText="메인으로"
+                onConfirm={() => {
+                    navigate('/main');
+                }}
+            />
         </div>
     );
 };

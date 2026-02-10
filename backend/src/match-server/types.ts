@@ -16,4 +16,5 @@ export type UserSession = {
     skinSetting: any;
     joinedAt: number;
     maxDiff: number; 
+    timeControlSec?: number; // 기본은 10분(600초)
 };

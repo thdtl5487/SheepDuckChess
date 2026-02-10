@@ -15,20 +15,10 @@ dotenv.config();
 
 console.log("PGUSER", process.env.PGUSER);
 
-const rawOrigins = process.env.CORS_ORIGIN || '';
-const whitelist = rawOrigins.split(',').map(o => o.trim()).filter(Boolean);
-
 const app = express();
 
 app.use(cors({
-    origin: (origin, callback) => {
-        // origin이 없으면 Postman, 서버 간 호출 등이라 허용
-        if (!origin) return callback(null, true);
-        if (whitelist.includes(origin)) {
-            return callback(null, true);
-        }
-        callback(new Error(`CORS 거부: ${origin}`), false);
-    },
+    origin: true, // 모든 origin 허용 (개발용)
     credentials: true,
     exposedHeaders: ['set-cookie']
 }))

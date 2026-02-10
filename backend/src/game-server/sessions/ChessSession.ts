@@ -56,8 +56,8 @@ console.log("디펜스 패턴 :", defencePatterns.length);
 
 dotenv.config();
 
-const apiPort = process.env.PORT_API;
-const host = process.env.IS_JARANG === 'true' ? process.env.JARANG_HOST : process.env.TEST_HOST;
+const apiPort = process.env.PORT_API ?? '4000';
+const host = (process.env.IS_JARANG === 'true' ? process.env.JARANG_HOST : process.env.TEST_HOST) ?? 'localhost';
 
 
 export class ChessSession {
@@ -73,7 +73,13 @@ export class ChessSession {
     private playerSockets: Map<string, ws.WebSocket> = new Map();
     private lastMove: { from: string; to: string; pieceType: string } | null = null;
 
-    constructor() {
+    private initialTimeMs: number;
+    private whiteMs: number;
+    private blackMs: number;
+    private clockLastTs: number;
+    private lastClockBroadcastSec: number;
+
+    constructor(initialTimeSec: number = 600) {
         this.white = 0;
         this.black = 0;
         this.gameId = "";
@@ -84,6 +90,56 @@ export class ChessSession {
         this.enPassantTarget = null;
         this.result = "ongoing";
         this.lastMove = null;
+
+        this.initialTimeMs = Math.max(1, Math.floor(initialTimeSec)) * 1000;
+        this.whiteMs = this.initialTimeMs;
+        this.blackMs = this.initialTimeMs;
+        this.clockLastTs = Date.now();
+        this.lastClockBroadcastSec = Math.floor(this.clockLastTs / 1000);
+    }
+
+    private getClocksPayload(now: number) {
+        return {
+            initialMs: this.initialTimeMs,
+            whiteMs: this.whiteMs,
+            blackMs: this.blackMs,
+            turn: this.turn,
+            serverNow: now,
+        };
+    }
+
+    tickClocks(now: number = Date.now()) {
+        if (this.result !== "ongoing") return;
+
+        const dt = Math.max(0, now - this.clockLastTs);
+        this.clockLastTs = now;
+
+        if (this.turn === "white") this.whiteMs = Math.max(0, this.whiteMs - dt);
+        else this.blackMs = Math.max(0, this.blackMs - dt);
+
+        if (this.whiteMs <= 0 || this.blackMs <= 0) {
+            this.result = this.whiteMs <= 0 ? "black_win" : "white_win";
+            this.broadcast({
+                type: "GAME_OVER",
+                result: this.result,
+                winner: this.result === "white_win" ? "white" : "black",
+                reason: "timeout",
+            });
+
+            // 타임오버도 게임 종료이므로 로그 저장
+            // (체크메이트/무승부 경로에서는 applyMove에서 저장하고, 타임오버는 여기서만 발생)
+            this.saveLog().catch(console.error);
+            return;
+        }
+
+        const sec = Math.floor(now / 1000);
+        if (sec !== this.lastClockBroadcastSec) {
+            this.lastClockBroadcastSec = sec;
+            this.broadcast({
+                type: "CLOCK_SYNC",
+                clocks: this.getClocksPayload(now),
+            });
+        }
     }
 
     // 검출 플래그 & 최대 패턴 길이
@@ -140,13 +196,15 @@ export class ChessSession {
         })
 
         // (재)접속 시점마다 재접속한 소켓에 현재 보드 상태만 보내 줌
+        const now = Date.now();
         const initState = {
             type: "TURN_RESULT",      // 기존 TURN_RESULT 로 통일
             board: this.pieces,        // current board array
             turn: this.turn,          // 현재 턴
             logs: this.logs,          // 지금까지의 move log
             lastMove: this.lastMove,               // 초기 상태엔 마지막 수 없으니 null
-            captured: false               // 캡처 이벤트 아님
+            captured: false,              // 캡처 이벤트 아님
+            clocks: this.getClocksPayload(now)
         };
         console.log('initState : ',initState);
         socket.send(JSON.stringify(initState));
@@ -179,6 +237,10 @@ export class ChessSession {
     }
 
     applyMove(from: string, to: string, promotion: PieceType | null = null): { success: boolean; log?: string } {
+        if (this.result !== "ongoing") return { success: false };
+
+        // 서버 권한 시간 차감(현재 턴 플레이어의 시간)
+        this.tickClocks(Date.now());
         if (this.result !== "ongoing") return { success: false };
 
         const piece = this.pieces.find(p => p.position === from);
@@ -226,6 +288,7 @@ export class ChessSession {
             }
             this.logs.push(log);
             this.turn = nextTurn;
+            this.clockLastTs = Date.now();
             console.log(`from : ${from}, to : ${to}`)
             this.broadcast({
                 type: "TURN_RESULT",
@@ -237,7 +300,8 @@ export class ChessSession {
                     to: to,
                     pieceType: piece.type
                 },
-                isCaptured: false
+                isCaptured: false,
+                clocks: this.getClocksPayload(Date.now())
             });
             this.lastMove = { from, to, pieceType: piece.type };
             return { success: true, log };
@@ -317,7 +381,8 @@ export class ChessSession {
                 isCapture: isCapture,
                 attacker: piece.type,
                 victim: target?.type,
-                enPassantTarget: this.enPassantTarget
+                enPassantTarget: this.enPassantTarget,
+                clocks: this.getClocksPayload(Date.now())
             });
 
             this.lastMove = { from, to, pieceType: piece.type };
@@ -325,6 +390,7 @@ export class ChessSession {
             this.detectOpeningAndDefence();
 
             this.turn = nextTurn;
+            this.clockLastTs = Date.now();
 
             return { success: true, log };
         }
@@ -380,18 +446,27 @@ export class ChessSession {
     }
 
     private async saveLog() {
-        await axios.post(
-            `http://${host}:${apiPort}/game/insertLogs`,
-            {
-                game_serial_number: this.gameId,
-                white_player: this.white,
-                black_player: this.black,
-                win: this.result,            // "white_win" | "black_win" | "draw"
-                game_log: this.logs,        // 배열 그대로 보내도 되고, PGN 스트링으로 보내도 됩니다
-                game_date: new Date().toISOString(),
-            }, {
-            withCredentials: true,
+        const url = `http://${host}:${apiPort}/game/insertLogs`;
+        try {
+            await axios.post(
+                url,
+                {
+                    game_serial_number: this.gameId,
+                    white_player: this.white,
+                    black_player: this.black,
+                    win: this.result,            // "white_win" | "black_win" | "draw"
+                    game_log: this.logs,
+                    game_date: new Date().toISOString(),
+                },
+                {
+                    timeout: 5000,
+                }
+            );
+        } catch (err: any) {
+            const status = err?.response?.status;
+            const data = err?.response?.data;
+            console.error('❌ saveLog failed', { url, status, data, message: err?.message });
+            throw err;
         }
-        )
     }
 }
